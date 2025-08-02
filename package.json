@@ -1,0 +1,28 @@
+{
+  "name": "sloto-caster",
+  "version": "1.0.0",
+  "description": "Farcaster slot machine game on Base network",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network baseSepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network baseMainnet",
+    "verify": "hardhat verify --network baseSepolia",
+    "fund": "hardhat run scripts/fund.js --network baseSepolia",
+    "status": "hardhat run scripts/status.js --network baseSepolia",
+    "node": "hardhat node"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.19.0",
+    "dotenv": "^16.3.1"
+  },
+  "dependencies": {
+    "ethers": "^6.8.0"
+  },
+  "keywords": ["farcaster", "base", "slot-machine", "web3", "game"],
+  "author": "Your Name",
+  "license": "MIT"
+}

@@ -1,0 +1,10 @@
+{
+  "network": "baseSepolia",
+  "contractAddress": "0x8e04a35502aa7915b2834774Eb33d9e3e4cE29c7",
+  "deployedAt": "2025-08-02",
+  "initialFunding": "0.01 ETH",
+  "deployer": "0x88944ef9397deDbB08B2f33d994E59B0305B8Bd2",
+  "verified": false,
+  "status": "active",
+  "baseScanUrl": "https://sepolia.basescan.org/address/0x8e04a35502aa7915b2834774Eb33d9e3e4cE29c7"
+}
