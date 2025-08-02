@@ -1,6 +1,6 @@
 # 🎰 Sloto-caster
 
-A Farcaster-based slot machine game on Base network where players can win $1 worth of Base ETH!
+A Farcaster-based slot machine game on Base network where players can win $1 to $5 worth of Base ETH!
 
 ## 🚀 Quick Start
 
