@@ -525,7 +525,7 @@ export default function SlotoCaster() {
           </button>
           
           <div className="absolute bottom-1 sm:bottom-2 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold">
-            ★ 
+            
           </div>
         </div>
   
