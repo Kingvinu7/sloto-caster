@@ -324,7 +324,7 @@ export default function SlotoCaster() {
       red: 'bg-red-600 border-red-400'
     };
     
-    notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 ${colorClasses[color as keyof typeof colorClasses]} text-white px-6 py-3 rounded-lg font-bold z-50 shadow-xl border-2`;
+    notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 ${colorClasses[color as keyof typeof colorClasses]} text-white px-4 py-2 rounded-lg font-bold z-50 shadow-xl border-2 max-w-xs text-center text-sm`;
     notification.textContent = message;
     document.body.appendChild(notification);
     
@@ -357,319 +357,334 @@ export default function SlotoCaster() {
   }, []);
 
   const ReelSymbol = ({ symbol, spinning }: { symbol: string; spinning: boolean }) => (
-    <div className={`w-24 h-32 bg-gradient-to-b from-gray-100 via-white to-gray-100 rounded-lg flex items-center justify-center text-4xl shadow-xl border-4 border-gray-300 relative overflow-hidden ${spinning ? 'animate-pulse' : ''}`}>
+    <div className={`w-16 h-20 sm:w-20 sm:h-24 bg-gradient-to-b from-gray-100 via-white to-gray-100 rounded-lg flex items-center justify-center text-2xl sm:text-3xl shadow-lg border-2 border-gray-300 relative overflow-hidden ${spinning ? 'animate-pulse' : ''}`}>
       {spinning ? (
-        <div className="animate-spin text-6xl">🎰</div>
+        <div className="animate-spin text-3xl sm:text-4xl">🎰</div>
       ) : (
         <div className="drop-shadow-lg">{symbol}</div>
       )}
-      <div className="absolute top-1 left-1 w-2 h-2 bg-red-500 rounded-full"></div>
-      <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
-      <div className="absolute bottom-1 left-1 w-2 h-2 bg-red-500 rounded-full"></div>
-      <div className="absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+      <div className="absolute top-1 left-1 w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+      <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+      <div className="absolute bottom-1 left-1 w-1.5 h-1.5 bg-red-500 rounded-full"></div>
+      <div className="absolute bottom-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full"></div>
     </div>
-  );
+  ); 
 
   const renderGamePage = () => (
-    <>
-      <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">🎰 Sloto-caster</h1>
-        <p className="text-white/80">Hit 7️⃣7️⃣7️⃣ to win $1-$5 Base ETH!</p>
-        <div className="text-xs text-white/60 mt-2">
-          <a 
-            href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESS}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-1 hover:text-white"
-          >
-            Contract: {CONTRACT_ADDRESS.slice(0, 8)}...{CONTRACT_ADDRESS.slice(-6)}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        </div>
-      </div>
-
-      {error && (
-        <div className="bg-red-600/20 border border-red-400 rounded-lg p-4 mb-6 text-center">
-          <p className="text-red-200 text-sm">{error}</p>
-          <button 
-            onClick={() => setError('')}
-            className="text-red-300 text-xs mt-2 hover:text-red-100"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <div className="bg-white/10 rounded-lg p-4 mb-6">
-        <div className="flex justify-between items-center text-white">
-          <div className="flex items-center gap-2">
-            <Users className="w-5 h-5" />
-            <span>Today&apos;s Winners</span>
-          </div>
-          <span className="font-bold">{dailyWinners}/{maxDailyWinners}</span>
-        </div>
-        <div className="w-full bg-white/20 rounded-full h-2 mt-2">
-          <div 
-            className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${(dailyWinners / maxDailyWinners) * 100}%` }}
-          ></div>
-        </div>
-        <div className="text-center text-white/80 text-xs mt-2">
-          Contract Balance: {contractBalance} ETH
-        </div>
-      </div>
-
-      {isConnected && userFid && (
-        <div className="bg-white/10 rounded-lg p-4 mb-6 border border-blue-400">
-          <div className="text-center text-white">
-            <div className="text-sm text-white/80">Connected Player</div>
-            <div className="font-bold text-lg">FID: {userFid}</div>
-            <div className="text-xs text-white/60 font-mono mb-2">{walletAddress}</div>
-            <div className="text-lg font-bold text-yellow-400">🎟️ {remainingSpins} spins remaining</div>
-            {hasWonToday && (
-              <div className="text-green-400 text-sm mt-1">✅ Already won today!</div>
-            )}
+      <>
+        {/* Header */}
+        <div className="text-center mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">🎰 Sloto-caster</h1>
+          <p className="text-white/80 text-sm sm:text-base">Hit 7️⃣7️⃣7️⃣ to win $1-$5 Base ETH!</p>
+          <div className="text-xs text-white/60 mt-2">
+            <a 
+              href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESS}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-white break-all"
+            >
+              <span className="hidden sm:inline">Contract: </span>
+              <span className="sm:hidden">📄 </span>
+              {CONTRACT_ADDRESS.slice(0, 6)}...{CONTRACT_ADDRESS.slice(-4)}
+              <ExternalLink className="w-3 h-3 flex-shrink-0" />
+            </a>
           </div>
         </div>
-      )}
-
-      {!isMetaMaskInstalled() && (
-        <div className="bg-red-600/20 border border-red-400 rounded-lg p-6 mb-6 text-center">
-          <div className="text-4xl mb-4">🦊</div>
-          <h3 className="text-white font-bold text-lg mb-2">MetaMask Required</h3>
-          <p className="text-white/80 mb-4">Install MetaMask to play Sloto-caster</p>
-          <a
-            href="https://metamask.io"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center gap-2"
-          >
-            Install MetaMask
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
-      )}
-
-      {isMetaMaskInstalled() && !isConnected && (
-        <button
-          onClick={connectWallet}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mb-6 disabled:opacity-50"
-        >
-          <Wallet className="w-5 h-5" />
-          {loading ? 'Connecting...' : 'Connect Wallet'}
-        </button>
-      )}
-
-      {isConnected && remainingSpins <= 2 && (
-        <button
-          onClick={purchaseSpins}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-green-700 hover:to-teal-700 transition-all duration-200 mb-6 disabled:opacity-50"
-        >
-          <ShoppingCart className="w-5 h-5" />
-          {loading ? 'Processing...' : 'Buy 10 Spins - $0.10'}
-        </button>
-      )}
-
-      <div className="bg-gradient-to-b from-red-800 via-red-900 to-black rounded-2xl p-8 mb-6 border-4 border-yellow-400 shadow-2xl relative">
-        <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex gap-2">
-          <div className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
-          <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse" style={{animationDelay: '0.5s'}}></div>
-          <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
-        </div>
-        
-        <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-center py-2 px-4 rounded-lg mb-4 shadow-lg">
-          SLOTO-CASTER DELUXE
-        </div>
-        
-        <div className="flex justify-center gap-3 mb-6">
-          <ReelSymbol symbol={reels[0]} spinning={spinning1} />
-          <ReelSymbol symbol={reels[1]} spinning={spinning2} />
-          <ReelSymbol symbol={reels[2]} spinning={spinning3} />
-        </div>
-
-        <div className="bg-black text-green-400 font-mono text-center py-2 px-4 rounded mb-4 border border-green-400">
-          7️⃣ 7️⃣ 7️⃣ = $1-$5 BASE ETH
-        </div>
-
-        <button
-          onClick={spinReels}
-          disabled={!isConnected || loading || spinning || remainingSpins <= 0 || hasWonToday || dailyWinners >= maxDailyWinners}
-          className={`w-full py-4 px-6 rounded-lg font-bold text-xl flex items-center justify-center gap-3 transition-all duration-200 shadow-lg ${
-            !isConnected || loading || spinning || remainingSpins <= 0 || hasWonToday || dailyWinners >= maxDailyWinners
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-700 hover:to-red-900 shadow-xl hover:shadow-2xl border-2 border-yellow-400'
-          }`}
-        >
-          <Play className="w-6 h-6" />
-          {loading ? 'PROCESSING...' :
-           spinning ? 'SPINNING...' : 
-           !isConnected ? 'CONNECT WALLET' :
-           remainingSpins <= 0 ? 'BUY SPINS TO PLAY' :
-           hasWonToday ? 'ALREADY WON TODAY' :
-           dailyWinners >= maxDailyWinners ? 'DAILY LIMIT REACHED' : 
-           'PULL THE LEVER!'}
-        </button>
-        
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold">
-          ★ SLOTO-CASTER DELUXE ★
-        </div>
-      </div>
-
-      {hasWon && (
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg p-4 mb-6 text-center border-2 border-yellow-400 shadow-xl">
-          <div className="text-4xl mb-2">🎰💰🎉</div>
-          <h3 className="text-white font-bold text-xl mb-2">JACKPOT! 7️⃣7️⃣7️⃣!</h3>
-          <p className="text-white/90 mb-4">You won $1.00 worth of Base ETH!</p>
-          <p className="text-white/80 text-sm">ETH sent automatically to your wallet!</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <button
-          onClick={() => setCurrentPage('leaderboard')}
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-purple-700 hover:to-indigo-700 transition-all duration-200"
-        >
-          <Trophy className="w-5 h-5 text-yellow-400" />
-          Hall of Fame
-        </button>
-        
-        <button
-          onClick={() => setCurrentPage('history')}
-          className="bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-orange-700 hover:to-red-700 transition-all duration-200"
-        >
-          <History className="w-5 h-5" />
-          My Stats
-        </button>
-      </div>
-
-      <div className="mt-4 text-center text-white/60 text-xs">
-        <p>• Hit 7️⃣7️⃣7️⃣ to win $1-$5 Base ETH</p>
-        <p>• $0.10 = 10 spins • One win per day • Max 5 winners daily</p>
-        <p>• Live on Base Sepolia testnet</p>
-      </div>
-    </>
-  );
-
-  const renderLeaderboardPage = () => (
-    <>
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => setCurrentPage('game')}
-          className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors"
-        >
-          <ArrowLeft className="w-6 h-6 text-white" />
-        </button>
-        <h1 className="text-2xl font-bold text-white">🏆 Hall of Fame</h1>
-      </div>
-
-      <div className="bg-white/10 rounded-lg p-6 border border-purple-400">
-        <div className="text-center mb-6">
-          <div className="text-6xl mb-2">🏆</div>
-          <h2 className="text-xl font-bold text-white mb-2">SLOTO-CASTER CHAMPIONS</h2>
-          <p className="text-white/80">Live winners from Base Sepolia!</p>
-        </div>
-
-        {leaderboard.length > 0 ? (
-          <div className="space-y-4">
-            {leaderboard.map((winner, index) => (
-              <div key={index} className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-3xl">
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}
-                    </div>
-                    <div>
-                      <div className="font-mono text-white text-lg font-bold">{winner.address}</div>
-                      <div className="text-blue-400 text-sm">FID: {winner.fid}</div>
-                      <div className="text-green-400 font-bold">{winner.reward}</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-white/80">{winner.timestamp}</div>
-                    <div className="text-yellow-400 font-semibold text-sm">{winner.day}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <div className="text-4xl mb-4">🎯</div>
-            <p className="text-white/80">No winners yet! Be the first to hit 7️⃣7️⃣7️⃣</p>
+  
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-600/20 border border-red-400 rounded-lg p-3 mb-4 text-center">
+            <p className="text-red-200 text-xs sm:text-sm break-words">{error}</p>
+            <button 
+              onClick={() => setError('')}
+              className="text-red-300 text-xs mt-2 hover:text-red-100"
+            >
+              Dismiss
+            </button>
           </div>
         )}
-      </div>
-    </>
-  );
-
-  const renderHistoryPage = () => (
-    <>
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => setCurrentPage('game')}
-          className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors"
-        >
-          <ArrowLeft className="w-6 h-6 text-white" />
-        </button>
-        <h1 className="text-2xl font-bold text-white">📊 My Stats</h1>
-      </div>
-
-      {isConnected ? (
-        <div className="bg-white/10 rounded-lg p-6 border border-orange-400">
-          <div className="text-center mb-6">
-            <div className="text-4xl mb-2">📈</div>
-            <h2 className="text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="bg-white/5 rounded-lg p-3">
-                <div className="text-2xl font-bold text-blue-400">-</div>
-                <div className="text-white/80 text-sm">Total Spins</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-3">
-                <div className="text-2xl font-bold text-green-400">-</div>
-                <div className="text-white/80 text-sm">Wins</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-3">
-                <div className="text-2xl font-bold text-yellow-400">-</div>
-                <div className="text-white/80 text-sm">Win Rate</div>
-              </div>
+  
+        {/* Daily Stats */}
+        <div className="bg-white/10 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex justify-between items-center text-white">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              <span className="text-sm sm:text-base">Today&apos;s Winners</span>
             </div>
+            <span className="font-bold text-sm sm:text-base">{dailyWinners}/{maxDailyWinners}</span>
           </div>
-
-          <div className="text-center">
-            <p className="text-white/80 mb-4">Stats will load from smart contract</p>
-            <div className="text-sm text-white/60">
-              <p>Contract: {CONTRACT_ADDRESS}</p>
-              <p>Network: Base Sepolia</p>
-            </div>
+          <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+            <div 
+              className="bg-gradient-to-r from-green-400 to-green-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(dailyWinners / maxDailyWinners) * 100}%` }}
+            ></div>
+          </div>
+          <div className="text-center text-white/80 text-xs mt-2">
+            Contract Balance: {contractBalance} ETH
           </div>
         </div>
-      ) : (
-        <div className="bg-white/10 rounded-lg p-8 text-center border border-orange-400">
-          <div className="text-6xl mb-4">🔒</div>
-          <h2 className="text-xl font-bold text-white mb-2">Connect Wallet</h2>
-          <p className="text-white/80 mb-4">Connect your wallet to view playing stats</p>
+  
+        {/* User Info Display */}
+        {isConnected && userFid && (
+          <div className="bg-white/10 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 border border-blue-400">
+            <div className="text-center text-white">
+              <div className="text-xs sm:text-sm text-white/80">Connected Player</div>
+              <div className="font-bold text-base sm:text-lg">FID: {userFid}</div>
+              <div className="text-xs text-white/60 font-mono mb-2 break-all">{walletAddress}</div>
+              <div className="text-base sm:text-lg font-bold text-yellow-400">🎟️ {remainingSpins} spins left</div>
+              {hasWonToday && (
+                <div className="text-green-400 text-xs sm:text-sm mt-1">✅ Already won today!</div>
+              )}
+            </div>
+          </div>
+        )}
+  
+        {/* MetaMask Install Prompt */}
+        {!isMetaMaskInstalled() && (
+          <div className="bg-red-600/20 border border-red-400 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-center">
+            <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">🦊</div>
+            <h3 className="text-white font-bold text-base sm:text-lg mb-2">MetaMask Required</h3>
+            <p className="text-white/80 text-sm mb-3 sm:mb-4">Install MetaMask to play Sloto-caster</p>
+            <a
+              href="https://metamask.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-orange-600 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold hover:bg-orange-700 transition-colors inline-flex items-center gap-2 text-sm sm:text-base"
+            >
+              Install MetaMask
+              <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4" />
+            </a>
+          </div>
+        )}
+  
+        {/* Wallet Connection */}
+        {isMetaMaskInstalled() && !isConnected && (
           <button
             onClick={connectWallet}
             disabled={loading}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mx-auto disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mb-4 sm:mb-6 disabled:opacity-50 text-sm sm:text-base"
           >
-            <Wallet className="w-5 h-5" />
+            <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
             {loading ? 'Connecting...' : 'Connect Wallet'}
           </button>
+        )}
+  
+        {/* Purchase Spins */}
+        {isConnected && remainingSpins <= 2 && (
+          <button
+            onClick={purchaseSpins}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-green-700 hover:to-teal-700 transition-all duration-200 mb-4 sm:mb-6 disabled:opacity-50 text-sm sm:text-base"
+          >
+            <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+            {loading ? 'Processing...' : 'Buy 10 Spins - $0.10'}
+          </button>
+        )}
+  
+        {/* Slot Machine */}
+        <div className="bg-gradient-to-b from-red-800 via-red-900 to-black rounded-xl sm:rounded-2xl p-4 sm:p-8 mb-4 sm:mb-6 border-4 border-yellow-400 shadow-2xl relative">
+          <div className="absolute top-2 left-1/2 transform -translate-x-1/2 flex gap-1 sm:gap-2">
+            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-yellow-400 rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-400 rounded-full animate-pulse" style={{animationDelay: '0.5s'}}></div>
+            <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-400 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-center py-1.5 sm:py-2 px-2 sm:px-4 rounded-lg mb-3 sm:mb-4 shadow-lg text-xs sm:text-sm">
+            SLOTO-CASTER DELUXE
+          </div>
+          
+          <div className="flex justify-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <ReelSymbol symbol={reels[0]} spinning={spinning1} />
+            <ReelSymbol symbol={reels[1]} spinning={spinning2} />
+            <ReelSymbol symbol={reels[2]} spinning={spinning3} />
+          </div>
+  
+          <div className="bg-black text-green-400 font-mono text-center py-2 px-2 sm:px-4 rounded mb-3 sm:mb-4 border border-green-400 text-xs sm:text-sm">
+            7️⃣ 7️⃣ 7️⃣ = $1-$5 BASE ETH
+          </div>
+  
+          <button
+            onClick={spinReels}
+            disabled={!isConnected || loading || spinning || remainingSpins <= 0 || hasWonToday || dailyWinners >= maxDailyWinners}
+            className={`w-full py-3 sm:py-4 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-xl flex items-center justify-center gap-2 sm:gap-3 transition-all duration-200 shadow-lg ${
+              !isConnected || loading || spinning || remainingSpins <= 0 || hasWonToday || dailyWinners >= maxDailyWinners
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-700 hover:to-red-900 shadow-xl hover:shadow-2xl border-2 border-yellow-400'
+            }`}
+          >
+            <Play className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+            <span className="text-center leading-tight">
+              {loading ? 'PROCESSING...' :
+               spinning ? 'SPINNING...' : 
+               !isConnected ? 'CONNECT WALLET' :
+               remainingSpins <= 0 ? 'BUY SPINS TO PLAY' :
+               hasWonToday ? 'ALREADY WON TODAY' :
+               dailyWinners >= maxDailyWinners ? 'DAILY LIMIT REACHED' : 
+               'PULL THE LEVER!'}
+            </span>
+          </button>
+          
+          <div className="absolute bottom-1 sm:bottom-2 left-1/2 transform -translate-x-1/2 text-yellow-400 text-xs font-bold">
+            ★ SLOTO-CASTER DELUXE ★
+          </div>
         </div>
-      )}
-    </>
-  );
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 my-4">
-        {currentPage === 'game' && renderGamePage()}
-        {currentPage === 'leaderboard' && renderLeaderboardPage()}
-        {currentPage === 'history' && renderHistoryPage()}
+  
+        {/* Win Message */}
+        {hasWon && (
+          <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg p-4 mb-4 sm:mb-6 text-center border-2 border-yellow-400 shadow-xl">
+            <div className="text-3xl sm:text-4xl mb-2">🎰💰🎉</div>
+            <h3 className="text-white font-bold text-lg sm:text-xl mb-2">JACKPOT! 7️⃣7️⃣7️⃣!</h3>
+            <p className="text-white/90 mb-2 sm:mb-4 text-sm sm:text-base">You won $1.00 worth of Base ETH!</p>
+            <p className="text-white/80 text-xs sm:text-sm">ETH sent automatically to your wallet!</p>
+          </div>
+        )}
+  
+        {/* Navigation Buttons */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
+          <button
+            onClick={() => setCurrentPage('leaderboard')}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-1.5 sm:gap-2 hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 text-xs sm:text-sm"
+          >
+            <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400 flex-shrink-0" />
+            <span>Hall of Fame</span>
+          </button>
+          
+          <button
+            onClick={() => setCurrentPage('history')}
+            className="bg-gradient-to-r from-orange-600 to-red-600 text-white py-2.5 sm:py-3 px-3 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-1.5 sm:gap-2 hover:from-orange-700 hover:to-red-700 transition-all duration-200 text-xs sm:text-sm"
+          >
+            <History className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+            <span>My Stats</span>
+          </button>
+        </div>
+  
+        {/* Rules */}
+        <div className="mt-4 text-center text-white/60 text-xs leading-relaxed space-y-1">
+          <p>• Hit 7️⃣7️⃣7️⃣ to win $1-$5 Base ETH</p>
+          <p>• $0.10 = 10 spins • One win per day • Max 5 winners daily</p>
+          <p>• Live on Base Sepolia testnet</p>
+        </div>
+      </>
+    );
+  
+    const renderLeaderboardPage = () => (
+      <>
+        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <button
+            onClick={() => setCurrentPage('game')}
+            className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">🏆 Hall of Fame</h1>
+        </div>
+  
+        <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-purple-400">
+          <div className="text-center mb-4 sm:mb-6">
+            <div className="text-4xl sm:text-6xl mb-2">🏆</div>
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">SLOTO-CASTER CHAMPIONS</h2>
+            <p className="text-white/80 text-sm sm:text-base">Live winners from Base Sepolia!</p>
+          </div>
+  
+          {leaderboard.length > 0 ? (
+            <div className="space-y-3 sm:space-y-4">
+              {leaderboard.map((winner, index) => (
+                <div key={index} className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                      <div className="text-2xl sm:text-3xl flex-shrink-0">
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-white text-sm sm:text-lg font-bold truncate">{winner.address}</div>
+                        <div className="text-blue-400 text-xs sm:text-sm">FID: {winner.fid}</div>
+                        <div className="text-green-400 font-bold text-xs sm:text-sm">{winner.reward}</div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <div className="text-white/80 text-xs sm:text-sm">{winner.timestamp}</div>
+                      <div className="text-yellow-400 font-semibold text-xs">{winner.day}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 sm:py-8">
+              <div className="text-3xl sm:text-4xl mb-4">🎯</div>
+              <p className="text-white/80 text-sm sm:text-base">No winners yet! Be the first to hit 7️⃣7️⃣7️⃣</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  
+    const renderHistoryPage = () => (
+      <>
+        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <button
+            onClick={() => setCurrentPage('game')}
+            className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
+          >
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
+        </div>
+  
+        {isConnected ? (
+          <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
+            <div className="text-center mb-4 sm:mb-6">
+              <div className="text-3xl sm:text-4xl mb-2">📈</div>
+              <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-400">-</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-green-400">-</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Wins</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-yellow-400">-</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
+                </div>
+              </div>
+            </div>
+  
+            <div className="text-center">
+              <p className="text-white/80 mb-3 sm:mb-4 text-sm sm:text-base">Stats will load from smart contract</p>
+              <div className="text-xs sm:text-sm text-white/60 space-y-1">
+                <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
+                <p>Network: Base Sepolia</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white/10 rounded-lg p-6 sm:p-8 text-center border border-orange-400">
+            <div className="text-4xl sm:text-6xl mb-4">🔒</div>
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Connect Wallet</h2>
+            <p className="text-white/80 mb-4 text-sm sm:text-base">Connect your wallet to view playing stats</p>
+            <button
+              onClick={connectWallet}
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mx-auto disabled:opacity-50 text-sm sm:text-base"
+            >
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
+              {loading ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-2 sm:p-4 flex items-center justify-center">
+        <div className="w-full max-w-sm sm:max-w-md bg-white/10 backdrop-blur-lg rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-white/20 my-2 sm:my-4 overflow-hidden">
+          {currentPage === 'game' && renderGamePage()}
+          {currentPage === 'leaderboard' && renderLeaderboardPage()}
+          {currentPage === 'history' && renderHistoryPage()}
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
