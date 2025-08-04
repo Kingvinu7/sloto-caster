@@ -48,7 +48,6 @@ export default function SlotoCaster() {
   
   // Data
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-
   const symbols = ['🍒', '🍋', '🍊', '⭐', '💎', '🔔', '7️⃣', '🎰', '💰'];
 
   // Check if MetaMask is installed
@@ -56,24 +55,20 @@ export default function SlotoCaster() {
     return typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined';
   };
 
-  // Helper to get the right provider
+  // Helper to get the right provider - FIXED
   const getProvider = () => {
-  /* 🔹 Farcaster mini-app (wallet injected on parent iframe) */
-  if (typeof window !== 'undefined' && (window.parent as any)?.ethereum) {
-    return new (window as any).ethers.BrowserProvider(
-      (window.parent as any).ethereum
-    );
-  }
+    /* 🔹 Farcaster mini-app SDK provider */
+    if (typeof window !== 'undefined' && (window as any).fcast) {
+      return new (window as any).ethers.BrowserProvider((window as any).fcast);
+    }
 
-  /* 🔹 Regular browser wallets (MetaMask, Coinbase Wallet, etc.) */
-  if ((window as any).ethereum) {
-    return new (window as any).ethers.BrowserProvider(
-      (window as any).ethereum
-    );
-  }
+    /* 🔹 Regular browser wallets (MetaMask, Coinbase Wallet, etc.) */
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      return new (window as any).ethers.BrowserProvider((window as any).ethereum);
+    }
 
-  throw new Error('No wallet provider found');
-};
+    throw new Error('No wallet provider found');
+  };
   
   // Load contract data
   const loadContractData = async (fid: number) => {
@@ -92,7 +87,6 @@ export default function SlotoCaster() {
         ],
         provider
       );
-
       const [spins, dailyCount, balance, totalWinners, wonToday] = await Promise.all([
         contract.getRemainingSpins(fid),
         contract.getDailyWinnersCount(),
@@ -100,7 +94,6 @@ export default function SlotoCaster() {
         contract.getTotalWinners(),
         contract.hasFidWonToday(fid)
       ]);
-
       setRemainingSpins(Number(spins));
       setDailyWinners(Number(dailyCount));
       setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
@@ -154,6 +147,7 @@ export default function SlotoCaster() {
 
         // Get wallet address from provider
         const address = await getWalletAddress();
+       
         if (address) {
           setWalletAddress(address);
         }
@@ -201,11 +195,9 @@ export default function SlotoCaster() {
     try {
       setLoading(true);
       setError('');
-
       const accounts = await (window as any).ethereum.request({
         method: 'eth_requestAccounts'
       });
-
       if (accounts.length === 0) {
         throw new Error('No accounts found');
       }
@@ -259,30 +251,27 @@ export default function SlotoCaster() {
   // Purchase spins - FIXED
   const purchaseSpins = async () => {
     if (!userFid) return;
-
     try {
       setLoading(true);
       setError('');
 
-      const provider = getProvider(); // Use the helper function
+      const provider = getProvider();
+      // Use the helper function
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         ["function purchaseSpins(uint256 fid) external payable"],
         signer
       );
-
       showNotification(`🛒 Sending transaction to buy 10 spins...`, 'blue');
 
       const tx = await contract.purchaseSpins(userFid, {
         value: SPIN_PACK_COST,
         gasLimit: 200000
       });
-
       showNotification(`⏳ Transaction sent! Waiting for confirmation...`, 'blue');
       
       const receipt = await tx.wait();
-      
       if (receipt.status === 1) {
         await loadContractData(userFid);
         showNotification(`🎉 Success! Purchased 10 spins for $0.10`, 'green');
@@ -307,7 +296,6 @@ export default function SlotoCaster() {
   // Play slot machine - FIXED
   const spinReels = async () => {
     if (spinning || remainingSpins <= 0 || hasWonToday || !userFid) return;
-
     try {
       setLoading(true);
       setError('');
@@ -318,7 +306,8 @@ export default function SlotoCaster() {
       setSpinning2(true);
       setSpinning3(true);
 
-      const provider = getProvider(); // Use the helper function
+      const provider = getProvider();
+      // Use the helper function
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
@@ -328,13 +317,11 @@ export default function SlotoCaster() {
         ],
         signer
       );
-
       showNotification(`🎰 Calling smart contract to spin...`, 'blue');
 
       const tx = await contract.playSlotMachine(userFid, {
         gasLimit: 300000
       });
-
       showNotification(`⏳ Transaction sent! Processing spin...`, 'blue');
 
       const receipt = await tx.wait();
@@ -370,12 +357,10 @@ export default function SlotoCaster() {
         setSpinning1(false);
         setReels(prev => [newReels[0], prev[1], prev[2]]);
       }, 1000);
-
       setTimeout(() => {
         setSpinning2(false);
         setReels(prev => [prev[0], newReels[1], prev[2]]);
       }, 1500);
-
       setTimeout(() => {
         setSpinning3(false);
         setReels(prev => [prev[0], prev[1], newReels[2]]);
@@ -398,7 +383,6 @@ export default function SlotoCaster() {
       setSpinning1(false);
       setSpinning2(false);
       setSpinning3(false);
-      
       if (error.message.includes('user rejected')) {
         setError('Transaction cancelled by user');
       } else {
@@ -418,7 +402,6 @@ export default function SlotoCaster() {
       orange: 'bg-orange-600 border-orange-400',
       red: 'bg-red-600 border-red-400'
     };
-    
     notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 ${colorClasses[color as keyof typeof colorClasses]} text-white px-4 py-2 rounded-lg font-bold z-50 shadow-xl border-2 max-w-xs text-center text-sm`;
     notification.textContent = message;
     document.body.appendChild(notification);
