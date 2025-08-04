@@ -58,15 +58,23 @@ export default function SlotoCaster() {
 
   // Helper to get the right provider
   const getProvider = () => {
-    if (inMiniApp && (window as any).fcast) {
-      return new ethers.BrowserProvider((window as any).fcast);
-    }
-    if ((window as any).ethereum) {
-      return new ethers.BrowserProvider((window as any).ethereum);
-    }
-    throw new Error('No wallet provider found');
-  };
+  /* 🔹 Farcaster mini-app (wallet injected on parent iframe) */
+  if (typeof window !== 'undefined' && (window.parent as any)?.ethereum) {
+    return new (window as any).ethers.BrowserProvider(
+      (window.parent as any).ethereum
+    );
+  }
 
+  /* 🔹 Regular browser wallets (MetaMask, Coinbase Wallet, etc.) */
+  if ((window as any).ethereum) {
+    return new (window as any).ethers.BrowserProvider(
+      (window as any).ethereum
+    );
+  }
+
+  throw new Error('No wallet provider found');
+};
+  
   // Load contract data
   const loadContractData = async (fid: number) => {
     try {
