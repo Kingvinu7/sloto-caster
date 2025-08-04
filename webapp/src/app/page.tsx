@@ -112,28 +112,39 @@ export default function SlotoCaster() {
   // Farcaster initialization
   useEffect(() => {
     const initFarcaster = async () => {
-      try {
-        await sdk.actions.ready();
-        const ctx = await sdk.context;
+      // First, check for the Farcaster wallet provider directly
+      if (typeof window !== 'undefined' && (window as any).fcast) {
+        try {
+          const fcastProvider = new ethers.BrowserProvider((window as any).fcast);
+          setProvider(fcastProvider);
+          const fcastSigner = await fcastProvider.getSigner();
+          setSigner(fcastSigner);
+          setWalletAddress(await fcastSigner.getAddress());
+          setInMiniApp(true);
+          setIsConnected(true);
 
-        setInMiniApp(true);
-        setUserFid(ctx.user.fid);
-        setIsConnected(true);
+          // Now, try to get the FID from the SDK context (can fail in some preview tools)
+          try {
+            await sdk.actions.ready();
+            const ctx = await sdk.context;
+            setUserFid(ctx.user.fid);
+            await loadContractData(ctx.user.fid);
+            showNotification('🎉 Connected via Farcaster!', 'green');
+          } catch (e) {
+            console.warn("Farcaster SDK context failed to load. Using mock FID.");
+            const testFid = Math.floor(Math.random() * 100000) + 10000;
+            setUserFid(testFid);
+            await loadContractData(testFid);
+            showNotification(`🎉 Connected via Farcaster wallet. Mock FID ${testFid}`, 'green');
+          }
 
-        // Get and store provider and signer
-        const fcastProvider = new ethers.BrowserProvider((window as any).fcast);
-        setProvider(fcastProvider);
-        const fcastSigner = await fcastProvider.getSigner();
-        setSigner(fcastSigner);
-        setWalletAddress(await fcastSigner.getAddress());
-
-        await loadContractData(ctx.user.fid);
-        showNotification('🎉 Connected via Farcaster!', 'green');
-      } catch (e) {
-        console.error("Farcaster SDK init failed:", e);
-        setInMiniApp(false);
+        } catch (e) {
+          console.error("Failed to connect Farcaster wallet provider:", e);
+          setInMiniApp(false);
+        }
       }
     };
+
     initFarcaster();
   }, []);
 
@@ -230,7 +241,10 @@ export default function SlotoCaster() {
 
   // Purchase spins
   const purchaseSpins = async () => {
-    if (!userFid || !signer) return;
+    if (!userFid || !signer) {
+      setError("Purchase failed: Wallet not connected properly.");
+      return;
+    }
     try {
       setLoading(true);
       setError('');
@@ -272,7 +286,10 @@ export default function SlotoCaster() {
 
   // Play slot machine
   const spinReels = async () => {
-    if (spinning || remainingSpins <= 0 || hasWonToday || !userFid || !signer) return;
+    if (spinning || remainingSpins <= 0 || hasWonToday || !userFid || !signer) {
+      setError("Spin failed: Wallet not connected properly.");
+      return;
+    }
     try {
       setLoading(true);
       setError('');
