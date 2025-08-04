@@ -50,20 +50,31 @@ export default function SlotoCaster() {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const symbols = ['🍒', '🍋', '🍊', '⭐', '💎', '🔔', '7️⃣', '🎰', '💰'];
 
-  // Stored provider and signer for transactions
-  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
-
   // Check if MetaMask is installed
   const isMetaMaskInstalled = () => {
     return typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined';
   };
 
+  // Helper to get the right provider - FIXED
+  const getProvider = () => {
+    /* 🔹 Farcaster mini-app SDK provider */
+    if (typeof window !== 'undefined' && (window as any).fcast) {
+      return new (window as any).ethers.BrowserProvider((window as any).fcast);
+    }
+
+    /* 🔹 Regular browser wallets (MetaMask, Coinbase Wallet, etc.) */
+    if (typeof window !== 'undefined' && (window as any).ethereum) {
+      return new (window as any).ethers.BrowserProvider((window as any).ethereum);
+    }
+
+    throw new Error('No wallet provider found');
+  };
+  
   // Load contract data
   const loadContractData = async (fid: number) => {
     try {
       // Use public RPC for reads
-      const rpcProvider = new ethers.JsonRpcProvider('https://sepolia.base.org');
+      const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         [
@@ -74,7 +85,7 @@ export default function SlotoCaster() {
           "function hasFidWonToday(uint256 fid) external view returns (bool)",
           "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day)[])"
         ],
-        rpcProvider
+        provider
       );
       const [spins, dailyCount, balance, totalWinners, wonToday] = await Promise.all([
         contract.getRemainingSpins(fid),
@@ -109,42 +120,44 @@ export default function SlotoCaster() {
     }
   };
 
+  // Get wallet address from provider
+  const getWalletAddress = async () => {
+    try {
+      if (inMiniApp && (window as any).fcast) {
+        const provider = new ethers.BrowserProvider((window as any).fcast);
+        const signer = await provider.getSigner();
+        return await signer.getAddress();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   // Farcaster initialization
   useEffect(() => {
     const initFarcaster = async () => {
-      // First, check for the Farcaster wallet provider directly
-      if (typeof window !== 'undefined' && (window as any).fcast) {
-        try {
-          const fcastProvider = new ethers.BrowserProvider((window as any).fcast);
-          setProvider(fcastProvider);
-          const fcastSigner = await fcastProvider.getSigner();
-          setSigner(fcastSigner);
-          setWalletAddress(await fcastSigner.getAddress());
-          setInMiniApp(true);
-          setIsConnected(true);
+      try {
+        await sdk.actions.ready();
+        const ctx = await sdk.context;
 
-          // Now, try to get the FID from the SDK context (can fail in some preview tools)
-          try {
-            await sdk.actions.ready();
-            const ctx = await sdk.context;
-            setUserFid(ctx.user.fid);
-            await loadContractData(ctx.user.fid);
-            showNotification('🎉 Connected via Farcaster!', 'green');
-          } catch (e) {
-            console.warn("Farcaster SDK context failed to load. Using mock FID.");
-            const testFid = Math.floor(Math.random() * 100000) + 10000;
-            setUserFid(testFid);
-            await loadContractData(testFid);
-            showNotification(`🎉 Connected via Farcaster wallet. Mock FID ${testFid}`, 'green');
-          }
+        setInMiniApp(true);
+        setUserFid(ctx.user.fid);
+        setIsConnected(true);
 
-        } catch (e) {
-          console.error("Failed to connect Farcaster wallet provider:", e);
-          setInMiniApp(false);
+        // Get wallet address from provider
+        const address = await getWalletAddress();
+       
+        if (address) {
+          setWalletAddress(address);
         }
+
+        await loadContractData(ctx.user.fid);
+        showNotification('🎉 Connected via Farcaster!', 'green');
+      } catch {
+        setInMiniApp(false);
       }
     };
-
     initFarcaster();
   }, []);
 
@@ -218,10 +231,6 @@ export default function SlotoCaster() {
         }
       }
 
-      const walletProvider = new ethers.BrowserProvider((window as any).ethereum);
-      setProvider(walletProvider);
-      const walletSigner = await walletProvider.getSigner();
-      setSigner(walletSigner);
       setWalletAddress(accounts[0]);
       setIsConnected(true);
 
@@ -239,16 +248,16 @@ export default function SlotoCaster() {
     }
   };
 
-  // Purchase spins
+  // Purchase spins - FIXED
   const purchaseSpins = async () => {
-    if (!userFid || !signer) {
-      setError("Purchase failed: Wallet not connected properly.");
-      return;
-    }
+    if (!userFid) return;
     try {
       setLoading(true);
       setError('');
 
+      const provider = getProvider();
+      // Use the helper function
+      const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         ["function purchaseSpins(uint256 fid) external payable"],
@@ -284,12 +293,9 @@ export default function SlotoCaster() {
     }
   };
 
-  // Play slot machine
+  // Play slot machine - FIXED
   const spinReels = async () => {
-    if (spinning || remainingSpins <= 0 || hasWonToday || !userFid || !signer) {
-      setError("Spin failed: Wallet not connected properly.");
-      return;
-    }
+    if (spinning || remainingSpins <= 0 || hasWonToday || !userFid) return;
     try {
       setLoading(true);
       setError('');
@@ -300,6 +306,9 @@ export default function SlotoCaster() {
       setSpinning2(true);
       setSpinning3(true);
 
+      const provider = getProvider();
+      // Use the helper function
+      const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         [
