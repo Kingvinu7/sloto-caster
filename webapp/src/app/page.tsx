@@ -55,16 +55,24 @@ export default function SlotoCaster() {
     return typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined';
   };
 
-  // Helper to get the right provider - FIXED
-  const getProvider = () => {
-    /* 🔹 Farcaster mini-app SDK provider */
-    if (typeof window !== 'undefined' && (window as any).fcast) {
-      return new (window as any).ethers.BrowserProvider((window as any).fcast);
+  // FIXED: Helper to get the right provider using official Farcaster SDK
+  const getProvider = async () => {
+    try {
+      // First try the official Farcaster miniapp SDK method
+      if (inMiniApp) {
+        const provider = await sdk.wallet.getEthereumProvider();
+        if (provider) {
+          return new ethers.BrowserProvider(provider);
+        }
+        throw new Error('Farcaster wallet provider not available');
+      }
+    } catch (error) {
+      console.log('Farcaster provider failed, trying fallback:', error);
     }
 
-    /* 🔹 Regular browser wallets (MetaMask, Coinbase Wallet, etc.) */
+    // Fallback to window.ethereum for non-miniapp environments
     if (typeof window !== 'undefined' && (window as any).ethereum) {
-      return new (window as any).ethers.BrowserProvider((window as any).ethereum);
+      return new ethers.BrowserProvider((window as any).ethereum);
     }
 
     throw new Error('No wallet provider found');
@@ -120,16 +128,20 @@ export default function SlotoCaster() {
     }
   };
 
-  // Get wallet address from provider
+  // FIXED: Get wallet address using proper SDK method
   const getWalletAddress = async () => {
     try {
-      if (inMiniApp && (window as any).fcast) {
-        const provider = new ethers.BrowserProvider((window as any).fcast);
-        const signer = await provider.getSigner();
-        return await signer.getAddress();
+      if (inMiniApp) {
+        const provider = await sdk.wallet.getEthereumProvider();
+        if (provider) {
+          const ethProvider = new ethers.BrowserProvider(provider);
+          const signer = await ethProvider.getSigner();
+          return await signer.getAddress();
+        }
       }
       return null;
-    } catch {
+    } catch (error) {
+      console.error('Failed to get wallet address:', error);
       return null;
     }
   };
@@ -138,23 +150,26 @@ export default function SlotoCaster() {
   useEffect(() => {
     const initFarcaster = async () => {
       try {
+        // Wait for SDK to be ready
         await sdk.actions.ready();
         const ctx = await sdk.context;
 
+        console.log('Farcaster SDK context:', ctx);
+        
         setInMiniApp(true);
         setUserFid(ctx.user.fid);
         setIsConnected(true);
 
         // Get wallet address from provider
         const address = await getWalletAddress();
-       
         if (address) {
           setWalletAddress(address);
         }
 
         await loadContractData(ctx.user.fid);
         showNotification('🎉 Connected via Farcaster!', 'green');
-      } catch {
+      } catch (error) {
+        console.error('Farcaster SDK initialization failed:', error);
         setInMiniApp(false);
       }
     };
@@ -248,27 +263,30 @@ export default function SlotoCaster() {
     }
   };
 
-  // Purchase spins - FIXED
+  // FIXED: Purchase spins using proper provider method
   const purchaseSpins = async () => {
     if (!userFid) return;
     try {
       setLoading(true);
       setError('');
 
-      const provider = getProvider();
-      // Use the helper function
+      // Use the corrected provider method
+      const provider = await getProvider();
       const signer = await provider.getSigner();
+      
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         ["function purchaseSpins(uint256 fid) external payable"],
         signer
       );
+      
       showNotification(`🛒 Sending transaction to buy 10 spins...`, 'blue');
 
       const tx = await contract.purchaseSpins(userFid, {
         value: SPIN_PACK_COST,
         gasLimit: 200000
       });
+      
       showNotification(`⏳ Transaction sent! Waiting for confirmation...`, 'blue');
       
       const receipt = await tx.wait();
@@ -281,7 +299,7 @@ export default function SlotoCaster() {
 
     } catch (error: any) {
       console.error('Failed to purchase spins:', error);
-      if (error.message.includes('user rejected')) {
+      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
         setError('Transaction cancelled by user');
       } else if (error.message.includes('insufficient funds')) {
         setError('Insufficient Base Sepolia ETH for transaction');
@@ -293,7 +311,7 @@ export default function SlotoCaster() {
     }
   };
 
-  // Play slot machine - FIXED
+  // FIXED: Play slot machine using proper provider method
   const spinReels = async () => {
     if (spinning || remainingSpins <= 0 || hasWonToday || !userFid) return;
     try {
@@ -306,9 +324,10 @@ export default function SlotoCaster() {
       setSpinning2(true);
       setSpinning3(true);
 
-      const provider = getProvider();
-      // Use the helper function
+      // Use the corrected provider method
+      const provider = await getProvider();
       const signer = await provider.getSigner();
+      
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         [
@@ -317,6 +336,7 @@ export default function SlotoCaster() {
         ],
         signer
       );
+      
       showNotification(`🎰 Calling smart contract to spin...`, 'blue');
 
       const tx = await contract.playSlotMachine(userFid, {
@@ -383,7 +403,7 @@ export default function SlotoCaster() {
       setSpinning1(false);
       setSpinning2(false);
       setSpinning3(false);
-      if (error.message.includes('user rejected')) {
+      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
         setError('Transaction cancelled by user');
       } else {
         setError(`Spin failed: ${error.message.slice(0, 100)}`);
@@ -542,7 +562,7 @@ export default function SlotoCaster() {
           disabled={loading}
           className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-green-700 hover:to-teal-700 transition-all duration-200 mb-4 sm:mb-6 disabled:opacity-50 text-sm sm:text-base"
         >
-          <ShoppingCart className="w-4 h-4 sm:w-5 sm:h-5" />
+          <ShoppingCart className="w-4 h-4 sm:w-5" />
           {loading ? 'Processing...' : 'Buy 10 Spins - $0.10'}
         </button>
       )}
