@@ -22,6 +22,14 @@ export const metadata: Metadata = {
   },
   viewport: 'width=device-width, initial-scale=1',
   themeColor: '#7c3aed',
+  other: {
+    'fc:frame': 'vNext',
+    'fc:frame:image': 'https://sloto-caster.com/initial.png',
+    'fc:frame:button:1': 'Spin!',
+    'fc:frame:button:1:action': 'tx',
+    'fc:frame:button:1:target': 'https://sloto-caster.com/api/tx',
+    'fc:frame:post_url': 'https://sloto-caster.com/api/spin',
+  },
 };
 
 export default function RootLayout({
