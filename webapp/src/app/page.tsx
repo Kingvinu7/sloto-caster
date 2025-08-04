@@ -64,9 +64,6 @@ export default function SlotoCaster() {
     if ((window as any).ethereum) {
       return new ethers.BrowserProvider((window as any).ethereum);
     }
-    if ((window as any).ethers) {
-      return new (window as any).ethers.BrowserProvider((window as any).ethereum);
-    }
     throw new Error('No wallet provider found');
   };
 
@@ -147,7 +144,7 @@ export default function SlotoCaster() {
         setUserFid(ctx.user.fid);
         setIsConnected(true);
 
-        // Get wallet address from provider instead of context
+        // Get wallet address from provider
         const address = await getWalletAddress();
         if (address) {
           setWalletAddress(address);
@@ -251,7 +248,7 @@ export default function SlotoCaster() {
     }
   };
 
-  // Purchase spins
+  // Purchase spins - FIXED
   const purchaseSpins = async () => {
     if (!userFid) return;
 
@@ -259,7 +256,7 @@ export default function SlotoCaster() {
       setLoading(true);
       setError('');
 
-      const provider = getProvider();
+      const provider = getProvider(); // Use the helper function
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
@@ -299,7 +296,7 @@ export default function SlotoCaster() {
     }
   };
 
-  // Play slot machine
+  // Play slot machine - FIXED
   const spinReels = async () => {
     if (spinning || remainingSpins <= 0 || hasWonToday || !userFid) return;
 
@@ -313,7 +310,7 @@ export default function SlotoCaster() {
       setSpinning2(true);
       setSpinning3(true);
 
-      const provider = getProvider();
+      const provider = getProvider(); // Use the helper function
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
