@@ -425,7 +425,7 @@ Give it a try and win ETH! 💰`;
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">🎰 Sloto-caster</h1>
-        <p className="text-white/80 text-sm sm:text-base">Each spin costs $0.025 • Hit 7️⃣7️⃣7️⃣ to win $1.00!</p>
+        <p className="text-white/80 text-sm sm:text-base">Pull the liver and Hit 7️⃣7️⃣7️⃣ to win $1.00!</p>
         <div className="text-xs text-white/60 mt-2">
           <a 
             href={`https://basescan.org/address/${CONTRACT_ADDRESS}`}
