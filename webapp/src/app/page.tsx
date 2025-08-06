@@ -532,7 +532,7 @@ export default function SlotoCaster() {
              !isConnected ? 'CONNECT WALLET' :
              hasWonToday ? 'ALREADY WON TODAY' :
              dailyWinners >= maxDailyWinners ? 'DAILY LIMIT REACHED' : 
-             'PAY $0.025 TO SPIN!'}
+             'PULL THE RIVER'}
           </span>
         </button>
       </div>
