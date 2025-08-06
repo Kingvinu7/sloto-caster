@@ -1,0 +1,32 @@
+{
+  "frame": {
+    "name": "Sloto Caster",
+    "version": "1",
+    "iconUrl": "https://sloto-caster.vercel.app/logo.png",
+    "homeUrl": "https://sloto-caster.vercel.app",
+    "imageUrl": "https://sloto-caster.vercel.app/previews.png",
+    "buttonTitle": "pull the liver",
+    "splashImageUrl": "https://sloto-caster.vercel.app/splash.png",
+    "splashBackgroundColor": "#DAA520",
+    "subtitle": "play slot and earn eth",
+    "description": "play the slot machine game in Farcaster om base network, play and win the chance to get eth.",
+    "primaryCategory": "games",
+    "tags": [
+      "base",
+      "trending",
+      "farcaster",
+      "casino",
+      "game"
+    ],
+    "tagline": "spin reels , win eth",
+    "ogTitle": "Sloto-caster - slot game on FC",
+    "ogDescription": "play the slot machine game in Farcaster om base network, play and win the chance to get eth.",
+    "ogImageUrl": "https://sloto-caster.vercel.app/previews.png",
+    "castShareUrl": "https://sloto-caster.vercel.app"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjI1MDg2OSwidHlwZSI6ImF1dGgiLCJrZXkiOiIweEU1OTVhMDE5QjQ4Mzc4RkVFMDk3MWVlMTcwMzUzNzk2NEUyQTNCMDUifQ",
+    "payload": "eyJkb21haW4iOiJzbG90by1jYXN0ZXIudmVyY2VsLmFwcCJ9",
+    "signature": "7jz9C23x9bJ7K90MiUdoNWbtg4J6fYjj0s0VVP/LXcxM0u6WngIspVw2x0DTCmDRWGwbqa3xw82glg4q3ik+URw="
+  }
+}
