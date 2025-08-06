@@ -8,17 +8,16 @@ import {
   Wallet, 
   ArrowLeft, 
   History, 
-  ShoppingCart, 
   ExternalLink 
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { ethers } from 'ethers';
 
 export default function SlotoCaster() {
-  // Contract details
-  const CONTRACT_ADDRESS = "0x8e04a35502aa7915b2834774Eb33d9e3e4cE29c7";
-  const BASE_SEPOLIA_CHAIN_ID = 84532;
-  const SPIN_PACK_COST = "30000000000000"; // 0.00003 ETH in wei
+  // Contract details - UPDATED FOR MAINNET
+  const CONTRACT_ADDRESS = "0xBF2dBFc170570aC60e93DEDB81d88C9824BB810f";
+  const BASE_MAINNET_CHAIN_ID = 8453; // Base mainnet
+  const SPIN_COST_WEI = "8000000000000"; // 0.000008 ETH (~$0.025)
 
   // Game state
   const [reels, setReels] = useState(['🍒', '🍋', '🍊']);
@@ -33,7 +32,6 @@ export default function SlotoCaster() {
   const [inMiniApp, setInMiniApp] = useState(false);
   const [userFid, setUserFid] = useState<number | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [remainingSpins, setRemainingSpins] = useState(0);
   const [hasWonToday, setHasWonToday] = useState(false);
   
   // Contract state
@@ -55,10 +53,9 @@ export default function SlotoCaster() {
     return typeof window !== 'undefined' && typeof (window as any).ethereum !== 'undefined';
   };
 
-  // FIXED: Helper to get the right provider using official Farcaster SDK
+  // Helper to get the right provider using official Farcaster SDK
   const getProvider = async () => {
     try {
-      // First try the official Farcaster miniapp SDK method
       if (inMiniApp) {
         const provider = await sdk.wallet.getEthereumProvider();
         if (provider) {
@@ -70,7 +67,6 @@ export default function SlotoCaster() {
       console.log('Farcaster provider failed, trying fallback:', error);
     }
 
-    // Fallback to window.ethereum for non-miniapp environments
     if (typeof window !== 'undefined' && (window as any).ethereum) {
       return new ethers.BrowserProvider((window as any).ethereum);
     }
@@ -78,15 +74,14 @@ export default function SlotoCaster() {
     throw new Error('No wallet provider found');
   };
   
-  // Load contract data
+  // Load contract data - UPDATED FOR MAINNET
   const loadContractData = async (fid: number) => {
     try {
-      // Use public RPC for reads
-      const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
+      // Use mainnet RPC for reads
+      const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         [
-          "function getRemainingSpins(uint256 fid) external view returns (uint256)",
           "function getDailyWinnersCount() external view returns (uint256)",
           "function getContractBalance() external view returns (uint256)",
           "function getTotalWinners() external view returns (uint256)",
@@ -95,14 +90,14 @@ export default function SlotoCaster() {
         ],
         provider
       );
-      const [spins, dailyCount, balance, totalWinners, wonToday] = await Promise.all([
-        contract.getRemainingSpins(fid),
+      
+      const [dailyCount, balance, totalWinners, wonToday] = await Promise.all([
         contract.getDailyWinnersCount(),
         contract.getContractBalance(),
         contract.getTotalWinners(),
         contract.hasFidWonToday(fid)
       ]);
-      setRemainingSpins(Number(spins));
+      
       setDailyWinners(Number(dailyCount));
       setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
       setHasWonToday(wonToday);
@@ -121,14 +116,12 @@ export default function SlotoCaster() {
 
     } catch (error) {
       console.error('Failed to load contract data:', error);
-      // Fallback data
-      setRemainingSpins(3);
-      setContractBalance("0.01");
-      setDailyWinners(2);
+      setContractBalance("0.003");
+      setDailyWinners(0);
     }
   };
 
-  // FIXED: Get wallet address using proper SDK method
+  // Get wallet address using proper SDK method
   const getWalletAddress = async () => {
     try {
       if (inMiniApp) {
@@ -150,7 +143,6 @@ export default function SlotoCaster() {
   useEffect(() => {
     const initFarcaster = async () => {
       try {
-        // Wait for SDK to be ready
         await sdk.actions.ready();
         const ctx = await sdk.context;
 
@@ -160,7 +152,6 @@ export default function SlotoCaster() {
         setUserFid(ctx.user.fid);
         setIsConnected(true);
 
-        // Get wallet address from provider
         const address = await getWalletAddress();
         if (address) {
           setWalletAddress(address);
@@ -200,7 +191,7 @@ export default function SlotoCaster() {
     }
   }, [inMiniApp]);
 
-  // Connect wallet (MetaMask fallback)
+  // Connect wallet (MetaMask fallback) - UPDATED FOR MAINNET
   const connectWallet = async () => {
     if (!isMetaMaskInstalled()) {
       setError('MetaMask is required! Please install MetaMask to play.');
@@ -218,26 +209,26 @@ export default function SlotoCaster() {
       }
 
       const chainId = await (window as any).ethereum.request({ method: 'eth_chainId' });
-      if (parseInt(chainId, 16) !== BASE_SEPOLIA_CHAIN_ID) {
+      if (parseInt(chainId, 16) !== BASE_MAINNET_CHAIN_ID) {
         try {
           await (window as any).ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: `0x${BASE_SEPOLIA_CHAIN_ID.toString(16)}` }],
+            params: [{ chainId: `0x${BASE_MAINNET_CHAIN_ID.toString(16)}` }],
           });
         } catch (switchError: any) {
           if (switchError.code === 4902) {
             await (window as any).ethereum.request({
               method: 'wallet_addEthereumChain',
               params: [{
-                chainId: `0x${BASE_SEPOLIA_CHAIN_ID.toString(16)}`,
-                chainName: 'Base Sepolia',
-                rpcUrls: ['https://sepolia.base.org'],
+                chainId: `0x${BASE_MAINNET_CHAIN_ID.toString(16)}`,
+                chainName: 'Base Mainnet',
+                rpcUrls: ['https://mainnet.base.org'],
                 nativeCurrency: {
                   name: 'Ethereum',
                   symbol: 'ETH',
                   decimals: 18
                 },
-                blockExplorerUrls: ['https://sepolia.basescan.org']
+                blockExplorerUrls: ['https://basescan.org']
               }]
             });
           } else {
@@ -263,57 +254,9 @@ export default function SlotoCaster() {
     }
   };
 
-  // FIXED: Purchase spins using proper provider method
-  const purchaseSpins = async () => {
-    if (!userFid) return;
-    try {
-      setLoading(true);
-      setError('');
-
-      // Use the corrected provider method
-      const provider = await getProvider();
-      const signer = await provider.getSigner();
-      
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        ["function purchaseSpins(uint256 fid) external payable"],
-        signer
-      );
-      
-      showNotification(`🛒 Sending transaction to buy 10 spins...`, 'blue');
-
-      const tx = await contract.purchaseSpins(userFid, {
-        value: SPIN_PACK_COST,
-        gasLimit: 200000
-      });
-      
-      showNotification(`⏳ Transaction sent! Waiting for confirmation...`, 'blue');
-      
-      const receipt = await tx.wait();
-      if (receipt.status === 1) {
-        await loadContractData(userFid);
-        showNotification(`🎉 Success! Purchased 10 spins for $0.10`, 'green');
-      } else {
-        throw new Error('Transaction failed');
-      }
-
-    } catch (error: any) {
-      console.error('Failed to purchase spins:', error);
-      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
-        setError('Transaction cancelled by user');
-      } else if (error.message.includes('insufficient funds')) {
-        setError('Insufficient Base Sepolia ETH for transaction');
-      } else {
-        setError(`Purchase failed: ${error.message.slice(0, 100)}`);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // FIXED: Play slot machine using proper provider method
+  // UPDATED: Play slot machine - now pay per spin
   const spinReels = async () => {
-    if (spinning || remainingSpins <= 0 || hasWonToday || !userFid) return;
+    if (spinning || hasWonToday || !userFid || dailyWinners >= maxDailyWinners) return;
     try {
       setLoading(true);
       setError('');
@@ -324,22 +267,22 @@ export default function SlotoCaster() {
       setSpinning2(true);
       setSpinning3(true);
 
-      // Use the corrected provider method
       const provider = await getProvider();
       const signer = await provider.getSigner();
       
       const contract = new ethers.Contract(
         CONTRACT_ADDRESS,
         [
-          "function playSlotMachine(uint256 fid) external",
-          "event GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint256 spinsRemaining)"
+          "function playSlotMachine(uint256 fid) external payable",
+          "event GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint256 day)"
         ],
         signer
       );
       
-      showNotification(`🎰 Calling smart contract to spin...`, 'blue');
+      showNotification(`🎰 Sending spin transaction...`, 'blue');
 
       const tx = await contract.playSlotMachine(userFid, {
+        value: SPIN_COST_WEI, // Pay $0.025 per spin
         gasLimit: 300000
       });
       showNotification(`⏳ Transaction sent! Processing spin...`, 'blue');
@@ -392,7 +335,7 @@ export default function SlotoCaster() {
           setDailyWinners(prev => prev + 1);
           showNotification(`🎉 JACKPOT! You won $1.00 Base ETH!`, 'green');
         } else {
-          showNotification(`😔 Not this time! Try again!`, 'orange');
+          showNotification(`😔 Not this time! Try again for $0.025!`, 'orange');
         }
 
         loadContractData(userFid);
@@ -452,10 +395,10 @@ export default function SlotoCaster() {
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">🎰 Sloto-caster</h1>
-        <p className="text-white/80 text-sm sm:text-base">Hit 7️⃣7️⃣7️⃣ to win $1-$5 Base ETH!</p>
+        <p className="text-white/80 text-sm sm:text-base">Each spin costs $0.025 • Hit 7️⃣7️⃣7️⃣ to win $1.00!</p>
         <div className="text-xs text-white/60 mt-2">
           <a 
-            href={`https://sepolia.basescan.org/address/${CONTRACT_ADDRESS}`}
+            href={`https://basescan.org/address/${CONTRACT_ADDRESS}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 hover:text-white break-all"
@@ -517,7 +460,6 @@ export default function SlotoCaster() {
             {walletAddress && (
               <div className="text-xs text-white/60 font-mono mb-2 break-all">{walletAddress}</div>
             )}
-            <div className="text-base sm:text-lg font-bold text-yellow-400">🎟️ {remainingSpins} spins left</div>
             {hasWonToday && (
               <div className="text-green-400 text-xs sm:text-sm mt-1">✅ Already won today!</div>
             )}
@@ -525,7 +467,7 @@ export default function SlotoCaster() {
         </div>
       )}
 
-      {/* MetaMask Install Prompt - only show if not in mini-app */}
+      {/* MetaMask Install Prompt */}
       {!inMiniApp && !isMetaMaskInstalled() && (
         <div className="bg-red-600/20 border border-red-400 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-center">
           <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">🦊</div>
@@ -543,7 +485,7 @@ export default function SlotoCaster() {
         </div>
       )}
 
-      {/* Wallet Connection - only show if not in mini-app and not connected */}
+      {/* Wallet Connection */}
       {!inMiniApp && isMetaMaskInstalled() && !isConnected && (
         <button
           onClick={connectWallet}
@@ -552,18 +494,6 @@ export default function SlotoCaster() {
         >
           <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
           {loading ? 'Connecting...' : 'Connect Wallet'}
-        </button>
-      )}
-
-      {/* Purchase Spins */}
-      {isConnected && remainingSpins <= 2 && (
-        <button
-          onClick={purchaseSpins}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-green-600 to-teal-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-green-700 hover:to-teal-700 transition-all duration-200 mb-4 sm:mb-6 disabled:opacity-50 text-sm sm:text-base"
-        >
-          <ShoppingCart className="w-4 h-4 sm:w-5" />
-          {loading ? 'Processing...' : 'Buy 10 Spins - $0.10'}
         </button>
       )}
 
@@ -586,14 +516,14 @@ export default function SlotoCaster() {
         </div>
 
         <div className="bg-black text-green-400 font-mono text-center py-2 px-2 sm:px-4 rounded mb-3 sm:mb-4 border border-green-400 text-xs sm:text-sm">
-          7️⃣ 7️⃣ 7️⃣ = $1-$5 BASE ETH
+          7️⃣ 7️⃣ 7️⃣ = $1.00 BASE ETH
         </div>
 
         <button
           onClick={spinReels}
-          disabled={!isConnected || loading || spinning || remainingSpins <= 0 || hasWonToday || dailyWinners >= maxDailyWinners}
+          disabled={!isConnected || loading || spinning || hasWonToday || dailyWinners >= maxDailyWinners}
           className={`w-full py-3 sm:py-4 px-4 sm:px-6 rounded-lg font-bold text-base sm:text-xl flex items-center justify-center gap-2 sm:gap-3 transition-all duration-200 shadow-lg ${
-            !isConnected || loading || spinning || remainingSpins <= 0 || hasWonToday || dailyWinners >= maxDailyWinners
+            !isConnected || loading || spinning || hasWonToday || dailyWinners >= maxDailyWinners
               ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-red-600 to-red-800 text-white hover:from-red-700 hover:to-red-900 shadow-xl hover:shadow-2xl border-2 border-yellow-400'
           }`}
@@ -603,10 +533,9 @@ export default function SlotoCaster() {
             {loading ? 'PROCESSING...' :
              spinning ? 'SPINNING...' : 
              !isConnected ? 'CONNECT WALLET' :
-             remainingSpins <= 0 ? 'BUY SPINS TO PLAY' :
              hasWonToday ? 'ALREADY WON TODAY' :
              dailyWinners >= maxDailyWinners ? 'DAILY LIMIT REACHED' : 
-             'PULL THE LEVER!'}
+             'PAY $0.025 TO SPIN!'}
           </span>
         </button>
       </div>
@@ -642,9 +571,9 @@ export default function SlotoCaster() {
 
       {/* Rules */}
       <div className="mt-4 text-center text-white/60 text-xs leading-relaxed space-y-1">
-        <p>• Hit 7️⃣7️⃣7️⃣ to win $1-$5 Base ETH</p>
-        <p>• $0.10 = 10 spins • One win per day • Max 5 winners daily</p>
-        <p>• Live on Base Sepolia testnet</p>
+        <p>• Hit 7️⃣7️⃣7️⃣ to win $1.00 Base ETH</p>
+        <p>• $0.025 per spin • One win per day • Max 5 winners daily</p>
+        <p>• Live on Base Mainnet</p>
       </div>
     </>
   );
@@ -665,7 +594,7 @@ export default function SlotoCaster() {
         <div className="text-center mb-4 sm:mb-6">
           <div className="text-4xl sm:text-6xl mb-2">🏆</div>
           <h2 className="text-lg sm:text-xl font-bold text-white mb-2">SLOTO-CASTER CHAMPIONS</h2>
-          <p className="text-white/80 text-sm sm:text-base">Live winners from Base Sepolia!</p>
+          <p className="text-white/80 text-sm sm:text-base">Live winners from Base Mainnet!</p>
         </div>
 
         {leaderboard.length > 0 ? (
@@ -738,7 +667,7 @@ export default function SlotoCaster() {
             <p className="text-white/80 mb-3 sm:mb-4 text-sm sm:text-base">Stats will load from smart contract</p>
             <div className="text-xs sm:text-sm text-white/60 space-y-1">
               <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
-              <p>Network: Base Sepolia</p>
+              <p>Network: Base Mainnet</p>
             </div>
           </div>
         </div>
