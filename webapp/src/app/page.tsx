@@ -417,8 +417,6 @@ const spinReels = async () => {
   console.log('Balance change + spin cost:', ethers.formatEther(balanceChange));
   console.log('Balance change > 0?', balanceChange > 0);
       
-      // Simple balance comparison (add back spin cost to detect net gain)
-      const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
       
       let actualWinAmount = 0;
       let wonSomething = false;
