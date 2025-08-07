@@ -14,10 +14,10 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { ethers } from 'ethers';
 
 export default function SlotoCaster() {
-  // Contract details - UPDATED FOR V2 WITH MULTI-TIER PRIZES
+  // Contract details - CORRECTED WITH PROPER ETH CALCULATIONS
   const CONTRACT_ADDRESS = "0x3f47191577718C8B184c319316a89D3469335161";
-  const BASE_MAINNET_CHAIN_ID = 8453; // Base mainnet
-  const SPIN_COST_WEI = "20000000000000"; // 0.00002 ETH (~$0.06)
+  const BASE_MAINNET_CHAIN_ID = 8453;
+  const SPIN_COST_WEI = "20000000000000"; // 0.00002 ETH (~$0.08 at ETH $3,877)
 
   // Game state
   const [reels, setReels] = useState(['🍒', '🍋', '🍊']);
@@ -45,13 +45,16 @@ export default function SlotoCaster() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Player stats
+  // Player stats - ENHANCED WITH REFRESH STATE
   const [playerStats, setPlayerStats] = useState({
     totalSpins: 0,
     totalWins: 0,
     totalSpent: 0,
-    totalWinnings: 0
+    totalWinnings: 0,
+    jackpotsWon: 0
   });
+
+  const [refreshing, setRefreshing] = useState(false);
   
   // Data
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -83,9 +86,16 @@ export default function SlotoCaster() {
     throw new Error('No wallet provider found');
   };
   
-  // Load contract data - UPDATED FOR V2 CONTRACT
-  const loadContractData = async (fid: number) => {
+  // ENHANCED: Load contract data with better error handling and debug logs
+  const loadContractData = async (fid: number, showLoadingNotification = false) => {
     try {
+      if (showLoadingNotification) {
+        setRefreshing(true);
+        showNotification('🔄 Refreshing stats...', 'blue');
+      }
+      
+      console.log('🔄 Loading contract data for FID:', fid);
+      
       // Use mainnet RPC for reads
       const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
       const contract = new ethers.Contract(
@@ -111,19 +121,25 @@ export default function SlotoCaster() {
         contract.getPlayerStats(fid).catch(() => ({ totalSpins: 0, totalWins: 0, totalSpent: 0, totalWinnings: 0, lastPlayDay: 0, jackpotsWon: 0 }))
       ]);
       
+      // Update contract state
       setDailyWinners(Number(dailyCount));
       setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
       setHasWonToday(wonToday);
       setJackpotAvailable(jackpotAvailableToday);
 
-      // Store player stats in state
-      setPlayerStats({
+      // ENHANCED: Store player stats with debug logging
+      const newPlayerStats = {
         totalSpins: Number(playerStats.totalSpins),
         totalWins: Number(playerStats.totalWins), 
         totalSpent: Number(ethers.formatEther(playerStats.totalSpent)),
-        totalWinnings: Number(ethers.formatEther(playerStats.totalWinnings))
-      });
+        totalWinnings: Number(ethers.formatEther(playerStats.totalWinnings)),
+        jackpotsWon: Number(playerStats.jackpotsWon || 0)
+      };
 
+      console.log('📊 Player stats loaded:', newPlayerStats);
+      setPlayerStats(newPlayerStats);
+
+      // Load winners
       if (Number(totalWinners) > 0) {
         const winners = await contract.getLatestWinners(10);
         const formattedWinners = winners.map((winner: any) => ({
@@ -131,15 +147,27 @@ export default function SlotoCaster() {
           fid: winner.fid.toString(),
           timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
           day: 'On-chain',
-          reward: winner.winType === 4 ? '$10.00' : winner.winType === 3 ? '$0.30' : winner.winType === 2 ? '$0.18' : '$0.06'
+          reward: winner.winType === 4 ? '$11.63' : winner.winType === 3 ? '$0.39' : winner.winType === 2 ? '$0.23' : '$0.08'
         }));
         setLeaderboard(formattedWinners);
       }
 
+      console.log('✅ Contract data loaded successfully');
+      
+      if (showLoadingNotification) {
+        showNotification('✅ Stats refreshed!', 'green');
+      }
+
     } catch (error) {
-      console.error('Failed to load contract data:', error);
+      console.error('❌ Failed to load contract data:', error);
       setContractBalance("0.003");
       setDailyWinners(0);
+      
+      if (showLoadingNotification) {
+        showNotification('❌ Failed to refresh stats', 'red');
+      }
+    } finally {
+      setRefreshing(false);
     }
   };
   
@@ -213,7 +241,7 @@ export default function SlotoCaster() {
     }
   }, [inMiniApp]);
 
-  // Connect wallet (MetaMask fallback) - UPDATED FOR MAINNET
+  // Connect wallet (MetaMask fallback)
   const connectWallet = async () => {
     if (!isMetaMaskInstalled()) {
       setError('MetaMask is required! Please install MetaMask to play.');
@@ -276,7 +304,7 @@ export default function SlotoCaster() {
     }
   };
 
-  // UPDATED: Play slot machine - V2 contract
+  // ENHANCED: Play slot machine with better stats refresh
   const spinReels = async () => {
     if (spinning || hasWonToday || !userFid || dailyWinners >= maxDailyWinners) return;
     try {
@@ -306,7 +334,7 @@ export default function SlotoCaster() {
         gasLimit: 300000
       });
       
-      showNotification(`🎉 Transaction sent! Processing result...`, 'green');
+      showNotification(`🎉 Transaction sent! Hash: ${tx.hash.slice(0, 10)}...`, 'green');
 
       // Simulate result for immediate UI feedback
       const simulatedWin = Math.random() < 0.48; // 48% chance for pairs
@@ -346,16 +374,29 @@ export default function SlotoCaster() {
         } else if (simulatedWin) {
           showNotification(`💰 Nice win! Check your wallet!`, 'green');
         } else {
-          showNotification(`😔 Better luck next time! Try again for $0.06!`, 'orange');
+          showNotification(`😔 Better luck next time! Try again for $0.08!`, 'orange');
         }
 
-        // Refresh contract data after 10 seconds
-        setTimeout(() => {
-          if (userFid) {
+        // ENHANCED: Multiple refresh attempts with proper timing
+        if (userFid) {
+          // Quick refresh after 3 seconds
+          setTimeout(() => {
+            console.log('🔄 First refresh attempt...');
             loadContractData(userFid);
-            showNotification(`📊 Contract data refreshed!`, 'blue');
-          }
-        }, 10000);
+          }, 3000);
+          
+          // Main refresh after 8 seconds (for blockchain confirmation)
+          setTimeout(() => {
+            console.log('🔄 Main refresh attempt...');
+            loadContractData(userFid, true);
+          }, 8000);
+          
+          // Final refresh after 15 seconds (ensure all data is updated)
+          setTimeout(() => {
+            console.log('🔄 Final refresh attempt...');
+            loadContractData(userFid);
+          }, 15000);
+        }
       }, 2000);
 
     } catch (error: any) {
@@ -376,7 +417,7 @@ export default function SlotoCaster() {
     }
   };
 
-  // UPDATED: Share function - only mention jackpot
+  // UPDATED: Share function with correct prize values
   const handleShare = async () => {
     try {
       let shareText;
@@ -392,7 +433,7 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
         // Not won message  
         shareText = `🎰 I'm playing Sloto-caster where you can earn ETH by getting 7️⃣7️⃣7️⃣ in the slot machine! 
 
-Hit the $10 jackpot! 💰
+Hit the $11.63 jackpot! 💰
 
 https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
       }
@@ -487,7 +528,7 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
       <div className="text-center mb-4">
         {jackpotAvailable ? (
           <p className="text-yellow-400 font-bold animate-pulse">
-            🏆 $10 JACKPOT STILL AVAILABLE TODAY!
+            🏆 $11.63 JACKPOT STILL AVAILABLE TODAY!
           </p>
         ) : (
           <p className="text-red-400">
@@ -545,6 +586,20 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
         </div>
       )}
 
+      {/* ENHANCED: Manual Refresh Button */}
+      {isConnected && userFid && (
+        <div className="text-center mb-4">
+          <button
+            onClick={() => loadContractData(userFid, true)}
+            disabled={refreshing || loading}
+            className="bg-blue-600/20 border border-blue-400 text-blue-200 px-4 py-2 rounded-lg text-sm hover:bg-blue-600/30 transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
+          >
+            <div className={refreshing ? 'animate-spin' : ''}>🔄</div>
+            {refreshing ? 'Refreshing...' : 'Refresh Stats & Balance'}
+          </button>
+        </div>
+      )}
+
       {/* MetaMask Install Prompt */}
       {!inMiniApp && !isMetaMaskInstalled() && (
         <div className="bg-red-600/20 border border-red-400 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6 text-center">
@@ -593,12 +648,13 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
           <ReelSymbol symbol={reels[2]} spinning={spinning3} />
         </div>
 
+        {/* CORRECTED PRIZE VALUES */}
         <div className="bg-black text-green-400 font-mono text-center py-2 px-2 sm:px-4 rounded mb-3 sm:mb-4 border border-green-400 text-xs sm:text-sm">
           🎰 MULTIPLE WAYS TO WIN! 🎰<br/>
-          💰 7️⃣7️⃣7️⃣ = $10.00<br/>
-          💎 🍒🍒🍒 = $0.30<br/>
-          ⭐ 7️⃣7️⃣ = $0.18<br/>
-          🎯 Any pair = $0.06
+          💰 7️⃣7️⃣7️⃣ = $11.63<br/>
+          💎 🍒🍒🍒 = $0.39<br/>
+          ⭐ 7️⃣7️⃣ = $0.23<br/>
+          🎯 Any pair = $0.08
         </div>
 
         <button
@@ -664,13 +720,13 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
         </button>
       </div>
 
-      {/* Rules */}
+      {/* CORRECTED RULES SECTION */}
       <div className="mt-4 text-center text-white/60 text-xs leading-relaxed space-y-1">
-        <p>• Triple 7️⃣ = $10.00 (1 per day)</p>
-        <p>• Three same = $0.30 (3 per day)</p>
-        <p>• Two 7️⃣ = $0.18 (unlimited)</p>
-        <p>• Any pair = $0.06 (unlimited)</p>
-        <p>• $0.06 per spin • Live on Base Mainnet</p>
+        <p>• Triple 7️⃣ = $11.63 (1 per day)</p>
+        <p>• Three same = $0.39 (3 per day)</p>
+        <p>• Two 7️⃣ = $0.23 (unlimited)</p>
+        <p>• Any pair = $0.08 (unlimited)</p>
+        <p>• $0.08 per spin • Live on Base Mainnet</p>
       </div>
     </>
   );
@@ -727,76 +783,122 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
     </>
   );
 
-  const renderHistoryPage = () => (
-    <>
-      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <button
-          onClick={() => setCurrentPage('game')}
-          className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-        </button>
-        <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
-      </div>
+  // ENHANCED: Stats page with auto-refresh and better display
+  const renderHistoryPage = () => {
+    // Auto-refresh stats when viewing this page
+    useEffect(() => {
+      if (currentPage === 'history' && isConnected && userFid) {
+        loadContractData(userFid);
+      }
+    }, [currentPage, isConnected, userFid]);
 
-      {isConnected ? (
-        <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
-          <div className="text-center mb-4 sm:mb-6">
-            <div className="text-3xl sm:text-4xl mb-2">📈</div>
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-2xl font-bold text-blue-400">{playerStats.totalSpins}</div>
-                <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-2xl font-bold text-green-400">{playerStats.totalWins}</div>
-                <div className="text-white/80 text-xs sm:text-sm">Wins</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-2xl font-bold text-yellow-400">
-                  {playerStats.totalSpins > 0 ? `${((playerStats.totalWins / playerStats.totalSpins) * 100).toFixed(1)}%` : '0%'}
-                </div>
-                <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center mt-4">
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-xl font-bold text-red-400">{playerStats.totalSpent.toFixed(4)} ETH</div>
-                <div className="text-white/80 text-xs sm:text-sm">Total Spent</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-xl font-bold text-emerald-400">{playerStats.totalWinnings.toFixed(4)} ETH</div>
-                <div className="text-white/80 text-xs sm:text-sm">Total Won</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <div className="text-xs sm:text-sm text-white/60 space-y-1">
-              <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
-              <p>Network: Base Mainnet</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-white/10 rounded-lg p-6 sm:p-8 text-center border border-orange-400">
-          <div className="text-4xl sm:text-6xl mb-4">🔒</div>
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Connect Wallet</h2>
-          <p className="text-white/80 mb-4 text-sm sm:text-base">Connect your wallet to view playing stats</p>
+    return (
+      <>
+        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
           <button
-            onClick={connectWallet}
-            disabled={loading}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mx-auto disabled:opacity-50 text-sm sm:text-base"
+            onClick={() => setCurrentPage('game')}
+            className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
           >
-            <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
-            {loading ? 'Connecting...' : 'Connect Wallet'}
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
+          {/* ENHANCED: Refresh button in header */}
+          <button
+            onClick={() => userFid && loadContractData(userFid, true)}
+            disabled={refreshing}
+            className="bg-blue-600 px-3 py-1 rounded text-white text-xs hover:bg-blue-700 ml-auto disabled:opacity-50 flex items-center gap-1"
+          >
+            <div className={refreshing ? 'animate-spin' : ''}>🔄</div>
+            {refreshing ? 'Updating...' : 'Refresh'}
           </button>
         </div>
-      )}
-    </>
-  );
+
+        {isConnected ? (
+          <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
+            <div className="text-center mb-4 sm:mb-6">
+              <div className="text-3xl sm:text-4xl mb-2">📈</div>
+              <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
+              
+              {/* ENHANCED: Main stats grid with jackpots */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center mb-4">
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-blue-400">{playerStats.totalSpins}</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-2xl font-bold text-green-400">{playerStats.totalWins}</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Total Wins</div>
+                </div>
+              </div>
+
+              {/* Win rate and jackpots */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center mb-4">
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-xl font-bold text-yellow-400">
+                    {playerStats.totalSpins > 0 ? `${((playerStats.totalWins / playerStats.totalSpins) * 100).toFixed(1)}%` : '0%'}
+                  </div>
+                  <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-xl font-bold text-purple-400">{playerStats.jackpotsWon}</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Jackpots Won</div>
+                </div>
+              </div>
+              
+              {/* Financial stats */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center">
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-xl font-bold text-red-400">{playerStats.totalSpent.toFixed(4)} ETH</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Total Spent</div>
+                  <div className="text-white/60 text-xs">${(playerStats.totalSpent * 3877).toFixed(2)}</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                  <div className="text-lg sm:text-xl font-bold text-emerald-400">{playerStats.totalWinnings.toFixed(4)} ETH</div>
+                  <div className="text-white/80 text-xs sm:text-sm">Total Won</div>
+                  <div className="text-white/60 text-xs">${(playerStats.totalWinnings * 3877).toFixed(2)}</div>
+                </div>
+              </div>
+
+              {/* ENHANCED: Profit/Loss indicator */}
+              <div className="mt-4 p-3 bg-white/5 rounded-lg">
+                <div className="text-sm text-white/80 mb-1">Net Profit/Loss</div>
+                <div className={`text-lg font-bold ${playerStats.totalWinnings >= playerStats.totalSpent ? 'text-green-400' : 'text-red-400'}`}>
+                  {playerStats.totalWinnings >= playerStats.totalSpent ? '+' : ''}
+                  {(playerStats.totalWinnings - playerStats.totalSpent).toFixed(4)} ETH
+                </div>
+                <div className={`text-xs ${playerStats.totalWinnings >= playerStats.totalSpent ? 'text-green-300' : 'text-red-300'}`}>
+                  {playerStats.totalWinnings >= playerStats.totalSpent ? '+$' : '-$'}
+                  {Math.abs((playerStats.totalWinnings - playerStats.totalSpent) * 3877).toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <div className="text-xs sm:text-sm text-white/60 space-y-1">
+                <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
+                <p>Network: Base Mainnet</p>
+                <p className="text-white/40">Stats update after each transaction</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white/10 rounded-lg p-6 sm:p-8 text-center border border-orange-400">
+            <div className="text-4xl sm:text-6xl mb-4">🔒</div>
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Connect Wallet</h2>
+            <p className="text-white/80 mb-4 text-sm sm:text-base">Connect your wallet to view playing stats</p>
+            <button
+              onClick={connectWallet}
+              disabled={loading}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mx-auto disabled:opacity-50 text-sm sm:text-base"
+            >
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
+              {loading ? 'Connecting...' : 'Connect Wallet'}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-2 sm:p-4 flex items-center justify-center">
