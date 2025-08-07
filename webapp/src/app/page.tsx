@@ -43,6 +43,14 @@ export default function SlotoCaster() {
   const [currentPage, setCurrentPage] = useState('game');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Add this state variable near your other state declarations
+const [playerStats, setPlayerStats] = useState({
+  totalSpins: 0,
+  totalWins: 0,
+  totalSpent: 0,
+  totalWinnings: 0
+});
   
   // Data
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -76,51 +84,61 @@ export default function SlotoCaster() {
   
   // Load contract data - UPDATED FOR MAINNET
   const loadContractData = async (fid: number) => {
-    try {
-      // Use mainnet RPC for reads
-      const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        [
-          "function getDailyWinnersCount() external view returns (uint256)",
-          "function getContractBalance() external view returns (uint256)",
-          "function getTotalWinners() external view returns (uint256)",
-          "function hasFidWonToday(uint256 fid) external view returns (bool)",
-          "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day)[])"
-        ],
-        provider
-      );
-      
-      const [dailyCount, balance, totalWinners, wonToday] = await Promise.all([
-        contract.getDailyWinnersCount(),
-        contract.getContractBalance(),
-        contract.getTotalWinners(),
-        contract.hasFidWonToday(fid)
-      ]);
-      
-      setDailyWinners(Number(dailyCount));
-      setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
-      setHasWonToday(wonToday);
+  try {
+    // Use mainnet RPC for reads
+    const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      [
+        "function getDailyWinnersCount() external view returns (uint256)",
+        "function getContractBalance() external view returns (uint256)",
+        "function getTotalWinners() external view returns (uint256)",
+        "function hasFidWonToday(uint256 fid) external view returns (bool)",
+        "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day)[])",
+        "function getPlayerStats(uint256 fid) external view returns (tuple(uint256 totalSpins, uint256 totalWins, uint256 totalSpent, uint256 totalWinnings, uint256 lastPlayDay))"
+      ],
+      provider
+    );
+    
+    const [dailyCount, balance, totalWinners, wonToday, playerStats] = await Promise.all([
+      contract.getDailyWinnersCount(),
+      contract.getContractBalance(),
+      contract.getTotalWinners(),
+      contract.hasFidWonToday(fid),
+      contract.getPlayerStats(fid).catch(() => ({ totalSpins: 0, totalWins: 0, totalSpent: 0, totalWinnings: 0, lastPlayDay: 0 }))
+    ]);
+    
+    setDailyWinners(Number(dailyCount));
+    setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
+    setHasWonToday(wonToday);
 
-      if (Number(totalWinners) > 0) {
-        const winners = await contract.getLatestWinners(10);
-        const formattedWinners = winners.map((winner: any) => ({
-          address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
-          fid: winner.fid.toString(),
-          timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
-          day: 'On-chain',
-          reward: '$1.00'
-        }));
-        setLeaderboard(formattedWinners);
-      }
+    // Store player stats in state
+    setPlayerStats({
+      totalSpins: Number(playerStats.totalSpins),
+      totalWins: Number(playerStats.totalWins), 
+      totalSpent: Number(ethers.formatEther(playerStats.totalSpent)),
+      totalWinnings: Number(ethers.formatEther(playerStats.totalWinnings))
+    });
 
-    } catch (error) {
-      console.error('Failed to load contract data:', error);
-      setContractBalance("0.003");
-      setDailyWinners(0);
+    if (Number(totalWinners) > 0) {
+      const winners = await contract.getLatestWinners(10);
+      const formattedWinners = winners.map((winner: any) => ({
+        address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
+        fid: winner.fid.toString(),
+        timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
+        day: 'On-chain',
+        reward: '$1.00'
+      }));
+      setLeaderboard(formattedWinners);
     }
-  };
 
+  } catch (error) {
+    console.error('Failed to load contract data:', error);
+    setContractBalance("0.003");
+    setDailyWinners(0);
+  }
+};
+  
   // Get wallet address using proper SDK method
   const getWalletAddress = async () => {
     try {
@@ -674,47 +692,60 @@ Give it a try and win ETH! 💰`;
   );
 
   const renderHistoryPage = () => (
-    <>
-      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-        <button
-          onClick={() => setCurrentPage('game')}
-          className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-        </button>
-        <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
-      </div>
+  <>
+    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+      <button
+        onClick={() => setCurrentPage('game')}
+        className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
+      >
+        <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+      </button>
+      <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
+    </div>
 
-      {isConnected ? (
-        <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
-          <div className="text-center mb-4 sm:mb-6">
-            <div className="text-3xl sm:text-4xl mb-2">📈</div>
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
-            <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-2xl font-bold text-blue-400">-</div>
-                <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
+    {isConnected ? (
+      <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
+        <div className="text-center mb-4 sm:mb-6">
+          <div className="text-3xl sm:text-4xl mb-2">📈</div>
+          <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+              <div className="text-lg sm:text-2xl font-bold text-blue-400">{playerStats.totalSpins}</div>
+              <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
+            </div>
+            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+              <div className="text-lg sm:text-2xl font-bold text-green-400">{playerStats.totalWins}</div>
+              <div className="text-white/80 text-xs sm:text-sm">Wins</div>
+            </div>
+            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+              <div className="text-lg sm:text-2xl font-bold text-yellow-400">
+                {playerStats.totalSpins > 0 ? `${((playerStats.totalWins / playerStats.totalSpins) * 100).toFixed(1)}%` : '0%'}
               </div>
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-2xl font-bold text-green-400">-</div>
-                <div className="text-white/80 text-xs sm:text-sm">Wins</div>
-              </div>
-              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-                <div className="text-lg sm:text-2xl font-bold text-yellow-400">-</div>
-                <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
-              </div>
+              <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
             </div>
           </div>
-
-          <div className="text-center">
-            <p className="text-white/80 mb-3 sm:mb-4 text-sm sm:text-base">Stats will load from smart contract</p>
-            <div className="text-xs sm:text-sm text-white/60 space-y-1">
-              <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
-              <p>Network: Base Mainnet</p>
+          
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center mt-4">
+            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+              <div className="text-lg sm:text-xl font-bold text-red-400">{playerStats.totalSpent.toFixed(4)} ETH</div>
+              <div className="text-white/80 text-xs sm:text-sm">Total Spent</div>
+            </div>
+            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+              <div className="text-lg sm:text-xl font-bold text-emerald-400">{playerStats.totalWinnings.toFixed(4)} ETH</div>
+              <div className="text-white/80 text-xs sm:text-sm">Total Won</div>
             </div>
           </div>
         </div>
-      ) : (
+
+        <div className="text-center">
+          <div className="text-xs sm:text-sm text-white/60 space-y-1">
+            <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
+            <p>Network: Base Mainnet</p>
+          </div>
+        </div>
+      </div>
+    ) : (
+      
         <div className="bg-white/10 rounded-lg p-6 sm:p-8 text-center border border-orange-400">
           <div className="text-4xl sm:text-6xl mb-4">🔒</div>
           <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Connect Wallet</h2>
