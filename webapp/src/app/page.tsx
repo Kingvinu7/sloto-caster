@@ -324,7 +324,7 @@ export default function SlotoCaster() {
   };
 
   // FIXED: Play slot machine with real transaction monitoring
-// FIXED: Enhanced transaction handling with dual providers
+// FIXED: Complete spinReels function with correct variable names
 const spinReels = async () => {
   if (spinning || hasWonToday || !userFid) return;
   
@@ -377,14 +377,14 @@ const spinReels = async () => {
     setTimeout(() => { setSpinning2(false); setReels(prev => [prev[0], newReels[1], prev[2]]); }, 1500);
     setTimeout(() => { setSpinning3(false); setReels(prev => [prev[0], prev[1], newReels[2]]); }, 2000);
 
-    // FIXED: Use read-only provider to get transaction receipt
+    // Wait for transaction receipt using read-only provider
     let receipt = null;
     let attempts = 0;
-    const maxAttempts = 30; // Wait up to 30 seconds
+    const maxAttempts = 30;
     
     while (!receipt && attempts < maxAttempts) {
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        await new Promise(resolve => setTimeout(resolve, 1000));
         receipt = await readOnlyProvider.getTransactionReceipt(tx.hash);
         attempts++;
       } catch (receiptError) {
@@ -404,17 +404,15 @@ const spinReels = async () => {
       // Transaction successful - check balance change
       const finalBalance = await readOnlyProvider.getBalance(walletAddress);
       
-      // Calculate actual reward (excluding gas fees)
-      // ✅ Simple balance comparison without gas calculations:
-const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
-      
+      // Simple balance comparison (add back spin cost to detect net gain)
+      const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
       
       let actualWinAmount = 0;
       let wonSomething = false;
       let isJackpot = false;
       
-      if (netBalanceChange > 0) {
-        actualWinAmount = Number(ethers.formatEther(netBalanceChange));
+      if (balanceChange > 0) {
+        actualWinAmount = Number(ethers.formatEther(balanceChange));
         wonSomething = true;
         
         if (actualWinAmount >= 0.003) {
@@ -435,7 +433,6 @@ const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
       
       console.log('🎰 Spin completed successfully:', {
         transactionHash: tx.hash,
-        gasUsed: receipt.gasUsed.toString(),
         actualReward: actualWinAmount,
         wonSomething,
         isJackpot
@@ -450,15 +447,7 @@ const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
   } catch (error: any) {
     console.error('❌ Transaction error:', error);
     
-    setSpinning(false);
-    setSpinning1(false);
-    setSpinning2(false);
-    setSpinning3(false);
-    
-    if (error.message.includes('unsupported') || error.message.includes('does not support')) {
-      setError('Provider limitation - using fallback method');
-      showNotification('🔄 Using backup method for transaction tracking', 'blue');
-    } else if (error.code === 4001 || error.message.includes('user rejected')) {
+    if (error.code === 4001 || error.message.includes('user rejected')) {
       setError('Transaction cancelled by user');
       showNotification('❌ Transaction cancelled', 'orange');
     } else {
