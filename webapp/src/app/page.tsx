@@ -380,35 +380,27 @@ const handleShare = async () => {
       // Won message
       shareText = `🎰💰 I just won real ETH from Sloto-caster slot machine game! 
 
-You can also win - start playing now! 🎯
-
-https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
+You can also win - start playing now! 🎯`;
     } else {
       // Not won message  
       shareText = `🎰 I'm playing Sloto-caster where you can earn ETH by getting 7️⃣7️⃣7️⃣ in the slot machine! 
 
-Give it a try and win ETH! 💰
-
-https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
+Give it a try and win ETH! 💰`;
     }
 
-    const miniappUrl = "https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster";
+    // Create Warpcast compose URL with proper encoding
+    const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent('https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster')}`;
     
-    if (inMiniApp) {
-      await sdk.actions.openUrl(`https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(miniappUrl)}`);
-    } else {
-      const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(miniappUrl)}`;
-      window.open(warpcastUrl, '_blank');
-    }
+    // Open the compose URL
+    window.open(warpcastUrl, '_blank');
+    showNotification('🚀 Opening cast composer...', 'blue');
     
-    showNotification('🚀 Opening cast composer...', 'green');
   } catch (error) {
     console.error('Share failed:', error);
     showNotification('❌ Share failed. Try again!', 'red');
   }
 };
   
-
     // Show notification
   const showNotification = (message: string, color = 'blue') => {
     const notification = document.createElement('div');
