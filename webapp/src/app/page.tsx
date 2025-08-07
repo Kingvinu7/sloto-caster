@@ -88,88 +88,100 @@ export default function SlotoCaster() {
   
   // ENHANCED: Load contract data with better error handling and debug logs
   const loadContractData = async (fid: number, showLoadingNotification = false) => {
-    try {
-      if (showLoadingNotification) {
-        setRefreshing(true);
-        showNotification('🔄 Refreshing stats...', 'blue');
-      }
-      
-      console.log('🔄 Loading contract data for FID:', fid);
-      
-      // Use mainnet RPC for reads
-      const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        [
-          "function getDailyThreeWinsCount() external view returns (uint256)",
-          "function getContractBalance() external view returns (uint256)",
-          "function getTotalWinners() external view returns (uint256)",
-          "function hasPlayerWonJackpotOnDay(uint256 fid) external view returns (bool)",
-          "function isJackpotAvailableToday() external view returns (bool)",
-          "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day, uint256 amount, uint8 winType)[])",
-          "function getPlayerStats(uint256 fid) external view returns (tuple(uint256 totalSpins, uint256 totalWins, uint256 totalSpent, uint256 totalWinnings, uint256 lastPlayDay, uint256 jackpotsWon))"
-        ],
-        provider
-      );
-      
-      const [dailyCount, balance, totalWinners, wonToday, jackpotAvailableToday, playerStats] = await Promise.all([
-        contract.getDailyThreeWinsCount(),
-        contract.getContractBalance(),
-        contract.getTotalWinners(),
-        contract.hasPlayerWonJackpotOnDay(fid),
-        contract.isJackpotAvailableToday(),
-        contract.getPlayerStats(fid).catch(() => ({ totalSpins: 0, totalWins: 0, totalSpent: 0, totalWinnings: 0, lastPlayDay: 0, jackpotsWon: 0 }))
-      ]);
-      
-      // Update contract state
-      setDailyWinners(Number(dailyCount));
-      setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
-      setHasWonToday(wonToday);
-      setJackpotAvailable(jackpotAvailableToday);
-
-      // ENHANCED: Store player stats with debug logging
-      const newPlayerStats = {
-        totalSpins: Number(playerStats.totalSpins),
-        totalWins: Number(playerStats.totalWins), 
-        totalSpent: Number(ethers.formatEther(playerStats.totalSpent)),
-        totalWinnings: Number(ethers.formatEther(playerStats.totalWinnings)),
-        jackpotsWon: Number(playerStats.jackpotsWon || 0)
-      };
-
-      console.log('📊 Player stats loaded:', newPlayerStats);
-      setPlayerStats(newPlayerStats);
-
-      // Load winners
-      if (Number(totalWinners) > 0) {
-        const winners = await contract.getLatestWinners(10);
-        const formattedWinners = winners.map((winner: any) => ({
-          address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
-          fid: winner.fid.toString(),
-          timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
-          day: 'On-chain',
-          reward: winner.winType === 4 ? '$11.63' : winner.winType === 3 ? '$0.39' : winner.winType === 2 ? '$0.23' : '$0.08'
-        }));
-        setLeaderboard(formattedWinners);
-      }
-
-      console.log('✅ Contract data loaded successfully');
-      
-      if (showLoadingNotification) {
-        showNotification('✅ Stats refreshed!', 'green');
-      }
-
-    } catch (error) {
-      console.error('❌ Failed to load contract data:', error);
-      setContractBalance("0.003");
-      setDailyWinners(0);
-      
-      if (showLoadingNotification) {
-        showNotification('❌ Failed to refresh stats', 'red');
-      }
-    } finally {
-      setRefreshing(false);
+  try {
+    if (showLoadingNotification) {
+      setRefreshing(true);
+      showNotification('🔄 Refreshing stats...', 'blue');
     }
-  };
+    
+    console.log('🔄 Loading contract data for FID:', fid);
+    
+    const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      [
+        // These functions exist in your contract
+        "function getDailyThreeWinsCount() external view returns (uint256)",
+        "function getContractBalance() external view returns (uint256)",
+        "function getTotalWinners() external view returns (uint256)",
+        "function hasPlayerWonJackpotOnDay(uint256 fid) external view returns (bool)",
+        "function isJackpotAvailableToday() external view returns (bool)",
+        "function getPlayerStats(uint256 fid) external view returns (tuple(uint256 totalSpins, uint256 totalWins, uint256 totalSpent, uint256 totalWinnings, uint256 lastPlayDay, uint256 jackpotsWon))",
+        "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day, uint256 amount, uint8 winType)[])",
+        "function getCurrentDay() external view returns (uint256)"
+      ],
+      provider
+    );
+    
+    // Call all functions that exist in your contract
+    const [dailyCount, balance, totalWinners, wonToday, jackpotAvailableToday, playerStatsResult] = await Promise.all([
+      contract.getDailyThreeWinsCount(),
+      contract.getContractBalance(),
+      contract.getTotalWinners(),
+      contract.hasPlayerWonJackpotOnDay(fid),
+      contract.isJackpotAvailableToday(),
+      contract.getPlayerStats(fid)
+    ]);
+    
+    // Update contract state
+    setDailyWinners(Number(dailyCount));
+    setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
+    setHasWonToday(wonToday);
+    setJackpotAvailable(jackpotAvailableToday);
+
+    // Process player stats - your struct returns: (totalSpins, totalWins, totalSpent, totalWinnings, lastPlayDay, jackpotsWon)
+    const newPlayerStats = {
+      totalSpins: Number(playerStatsResult.totalSpins || 0),
+      totalWins: Number(playerStatsResult.totalWins || 0),
+      totalSpent: Number(ethers.formatEther(playerStatsResult.totalSpent || 0)),
+      totalWinnings: Number(ethers.formatEther(playerStatsResult.totalWinnings || 0)),
+      jackpotsWon: Number(playerStatsResult.jackpotsWon || 0)
+    };
+
+    console.log('📊 Player stats loaded:', newPlayerStats);
+    setPlayerStats(newPlayerStats);
+
+    // Load winners if available
+    if (Number(totalWinners) > 0) {
+      const winnersResult = await contract.getLatestWinners(10);
+      const formattedWinners = winnersResult.map((winner: any) => ({
+        address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
+        fid: winner.fid.toString(),
+        timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
+        day: 'On-chain',
+        reward: winner.winType === 4 ? '$11.63' : winner.winType === 3 ? '$0.39' : winner.winType === 2 ? '$0.23' : '$0.08'
+      }));
+      setLeaderboard(formattedWinners);
+    }
+
+    console.log('✅ Contract data loaded successfully');
+    
+    if (showLoadingNotification) {
+      showNotification('✅ Stats refreshed!', 'green');
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to load contract data:', error);
+    setContractBalance("0.003");
+    setDailyWinners(0);
+    
+    // Set default stats on error
+    setPlayerStats({
+      totalSpins: 0,
+      totalWins: 0,
+      totalSpent: 0,
+      totalWinnings: 0,
+      jackpotsWon: 0
+    });
+    
+    if (showLoadingNotification) {
+      showNotification('❌ Failed to refresh stats', 'red');
+    }
+  } finally {
+    setRefreshing(false);
+  }
+};
+
   
   // Get wallet address using proper SDK method
   const getWalletAddress = async () => {
