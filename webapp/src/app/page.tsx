@@ -14,10 +14,10 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { ethers } from 'ethers';
 
 export default function SlotoCaster() {
-  // Contract details - UPDATED FOR MAINNET
-  const CONTRACT_ADDRESS = "0xBF2dBFc170570aC60e93DEDB81d88C9824BB810f";
+  // Contract details - UPDATED FOR V2 WITH MULTI-TIER PRIZES
+  const CONTRACT_ADDRESS = "0x3f47191577718C8B184c319316a89D3469335161";
   const BASE_MAINNET_CHAIN_ID = 8453; // Base mainnet
-  const SPIN_COST_WEI = "8000000000000"; // 0.000008 ETH (~$0.025)
+  const SPIN_COST_WEI = "20000000000000"; // 0.00002 ETH (~$0.06)
 
   // Game state
   const [reels, setReels] = useState(['🍒', '🍋', '🍊']);
@@ -34,23 +34,24 @@ export default function SlotoCaster() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [hasWonToday, setHasWonToday] = useState(false);
   
-  // Contract state
+  // Contract state - UPDATED FOR V2
   const [dailyWinners, setDailyWinners] = useState(0);
   const [maxDailyWinners] = useState(5);
   const [contractBalance, setContractBalance] = useState("0");
+  const [jackpotAvailable, setJackpotAvailable] = useState(true);
   
   // Navigation state
   const [currentPage, setCurrentPage] = useState('game');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Add this state variable near your other state declarations
-const [playerStats, setPlayerStats] = useState({
-  totalSpins: 0,
-  totalWins: 0,
-  totalSpent: 0,
-  totalWinnings: 0
-});
+  // Player stats
+  const [playerStats, setPlayerStats] = useState({
+    totalSpins: 0,
+    totalWins: 0,
+    totalSpent: 0,
+    totalWinnings: 0
+  });
   
   // Data
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -82,62 +83,65 @@ const [playerStats, setPlayerStats] = useState({
     throw new Error('No wallet provider found');
   };
   
-  // Load contract data - UPDATED FOR MAINNET
+  // Load contract data - UPDATED FOR V2 CONTRACT
   const loadContractData = async (fid: number) => {
-  try {
-    // Use mainnet RPC for reads
-    const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
-    const contract = new ethers.Contract(
-      CONTRACT_ADDRESS,
-      [
-        "function getDailyWinnersCount() external view returns (uint256)",
-        "function getContractBalance() external view returns (uint256)",
-        "function getTotalWinners() external view returns (uint256)",
-        "function hasFidWonToday(uint256 fid) external view returns (bool)",
-        "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day)[])",
-        "function getPlayerStats(uint256 fid) external view returns (tuple(uint256 totalSpins, uint256 totalWins, uint256 totalSpent, uint256 totalWinnings, uint256 lastPlayDay))"
-      ],
-      provider
-    );
-    
-    const [dailyCount, balance, totalWinners, wonToday, playerStats] = await Promise.all([
-      contract.getDailyWinnersCount(),
-      contract.getContractBalance(),
-      contract.getTotalWinners(),
-      contract.hasFidWonToday(fid),
-      contract.getPlayerStats(fid).catch(() => ({ totalSpins: 0, totalWins: 0, totalSpent: 0, totalWinnings: 0, lastPlayDay: 0 }))
-    ]);
-    
-    setDailyWinners(Number(dailyCount));
-    setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
-    setHasWonToday(wonToday);
+    try {
+      // Use mainnet RPC for reads
+      const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        [
+          "function getDailyThreeWinsCount() external view returns (uint256)",
+          "function getContractBalance() external view returns (uint256)",
+          "function getTotalWinners() external view returns (uint256)",
+          "function hasPlayerWonJackpotOnDay(uint256 fid) external view returns (bool)",
+          "function isJackpotAvailableToday() external view returns (bool)",
+          "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day, uint256 amount, uint8 winType)[])",
+          "function getPlayerStats(uint256 fid) external view returns (tuple(uint256 totalSpins, uint256 totalWins, uint256 totalSpent, uint256 totalWinnings, uint256 lastPlayDay, uint256 jackpotsWon))"
+        ],
+        provider
+      );
+      
+      const [dailyCount, balance, totalWinners, wonToday, jackpotAvailableToday, playerStats] = await Promise.all([
+        contract.getDailyThreeWinsCount(),
+        contract.getContractBalance(),
+        contract.getTotalWinners(),
+        contract.hasPlayerWonJackpotOnDay(fid),
+        contract.isJackpotAvailableToday(),
+        contract.getPlayerStats(fid).catch(() => ({ totalSpins: 0, totalWins: 0, totalSpent: 0, totalWinnings: 0, lastPlayDay: 0, jackpotsWon: 0 }))
+      ]);
+      
+      setDailyWinners(Number(dailyCount));
+      setContractBalance(Number(ethers.formatEther(balance)).toFixed(4));
+      setHasWonToday(wonToday);
+      setJackpotAvailable(jackpotAvailableToday);
 
-    // Store player stats in state
-    setPlayerStats({
-      totalSpins: Number(playerStats.totalSpins),
-      totalWins: Number(playerStats.totalWins), 
-      totalSpent: Number(ethers.formatEther(playerStats.totalSpent)),
-      totalWinnings: Number(ethers.formatEther(playerStats.totalWinnings))
-    });
+      // Store player stats in state
+      setPlayerStats({
+        totalSpins: Number(playerStats.totalSpins),
+        totalWins: Number(playerStats.totalWins), 
+        totalSpent: Number(ethers.formatEther(playerStats.totalSpent)),
+        totalWinnings: Number(ethers.formatEther(playerStats.totalWinnings))
+      });
 
-    if (Number(totalWinners) > 0) {
-      const winners = await contract.getLatestWinners(10);
-      const formattedWinners = winners.map((winner: any) => ({
-        address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
-        fid: winner.fid.toString(),
-        timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
-        day: 'On-chain',
-        reward: '$1.00'
-      }));
-      setLeaderboard(formattedWinners);
+      if (Number(totalWinners) > 0) {
+        const winners = await contract.getLatestWinners(10);
+        const formattedWinners = winners.map((winner: any) => ({
+          address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
+          fid: winner.fid.toString(),
+          timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
+          day: 'On-chain',
+          reward: winner.winType === 4 ? '$10.00' : winner.winType === 3 ? '$0.30' : winner.winType === 2 ? '$0.18' : '$0.06'
+        }));
+        setLeaderboard(formattedWinners);
+      }
+
+    } catch (error) {
+      console.error('Failed to load contract data:', error);
+      setContractBalance("0.003");
+      setDailyWinners(0);
     }
-
-  } catch (error) {
-    console.error('Failed to load contract data:', error);
-    setContractBalance("0.003");
-    setDailyWinners(0);
-  }
-};
+  };
   
   // Get wallet address using proper SDK method
   const getWalletAddress = async () => {
@@ -272,136 +276,152 @@ const [playerStats, setPlayerStats] = useState({
     }
   };
 
-  // UPDATED: Play slot machine - now pay per spin
+  // UPDATED: Play slot machine - V2 contract
   const spinReels = async () => {
-  if (spinning || hasWonToday || !userFid || dailyWinners >= maxDailyWinners) return;
-  try {
-    setLoading(true);
-    setError('');
-    setSpinning(true);
-    setHasWon(false);
-    
-    setSpinning1(true);
-    setSpinning2(true);
-    setSpinning3(true);
-
-    const provider = await getProvider();
-    const signer = await provider.getSigner();
-    
-    const contract = new ethers.Contract(
-      CONTRACT_ADDRESS,
-      ["function playSlotMachine(uint256 fid) external payable"],
-      signer
-    );
-    
-    showNotification(`🎰 Sending spin transaction...`, 'blue');
-
-    // Send transaction but DON'T wait for confirmation
-    const tx = await contract.playSlotMachine(userFid, {
-      value: SPIN_COST_WEI,
-      gasLimit: 300000
-    });
-    
-    // ✅ FIXED: Don't call tx.wait() - just show success
-    showNotification(`🎉 Transaction sent! Processing result...`, 'green');
-
-    // Simulate result for immediate UI feedback (actual result determined by contract)
-    const simulatedWin = Math.random() < 0.05; // 5% chance for demo
-    
-    let newReels;
-    if (simulatedWin) {
-      newReels = ['7️⃣', '7️⃣', '7️⃣'];
-    } else {
-      newReels = [
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)]
-      ];
-      // Prevent accidental triple 7s in losing simulation
-      while (newReels[0] === '7️⃣' && newReels[1] === '7️⃣' && newReels[2] === '7️⃣') {
-        newReels[Math.floor(Math.random() * 3)] = symbols[Math.floor(Math.random() * (symbols.length - 1))];
-      }
-    }
-
-    // Animate the reels (keep your existing animation)
-    setTimeout(() => {
-      setSpinning1(false);
-      setReels(prev => [newReels[0], prev[1], prev[2]]);
-    }, 1000);
-    setTimeout(() => {
-      setSpinning2(false);
-      setReels(prev => [prev[0], newReels[1], prev[2]]);
-    }, 1500);
-    setTimeout(() => {
-      setSpinning3(false);
-      setReels(prev => [prev[0], prev[1], newReels[2]]);
-      setSpinning(false);
+    if (spinning || hasWonToday || !userFid || dailyWinners >= maxDailyWinners) return;
+    try {
+      setLoading(true);
+      setError('');
+      setSpinning(true);
+      setHasWon(false);
       
-      if (simulatedWin) {
-        setHasWon(true);
-        showNotification(`🎉 Potential JACKPOT! Check your wallet for confirmation!`, 'green');
+      setSpinning1(true);
+      setSpinning2(true);
+      setSpinning3(true);
+
+      const provider = await getProvider();
+      const signer = await provider.getSigner();
+      
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        ["function playSlotMachine(uint256 fid) external payable"],
+        signer
+      );
+      
+      showNotification(`🎰 Sending spin transaction...`, 'blue');
+
+      // Send transaction
+      const tx = await contract.playSlotMachine(userFid, {
+        value: SPIN_COST_WEI,
+        gasLimit: 300000
+      });
+      
+      showNotification(`🎉 Transaction sent! Processing result...`, 'green');
+
+      // Simulate result for immediate UI feedback
+      const simulatedWin = Math.random() < 0.48; // 48% chance for pairs
+      const bigWin = Math.random() < 0.01; // 1% chance for big win
+      
+      let newReels;
+      if (bigWin) {
+        newReels = ['7️⃣', '7️⃣', '7️⃣'];
+      } else if (simulatedWin) {
+        const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+        newReels = [symbol, symbol, symbols[Math.floor(Math.random() * symbols.length)]];
       } else {
-        showNotification(`😔 Better luck next time! Try again for $0.025!`, 'orange');
+        newReels = [
+          symbols[Math.floor(Math.random() * symbols.length)],
+          symbols[Math.floor(Math.random() * symbols.length)],
+          symbols[Math.floor(Math.random() * symbols.length)]
+        ];
       }
 
-      // Refresh contract data after 10 seconds to show real results
+      // Animate the reels
       setTimeout(() => {
-        if (userFid) {
-          loadContractData(userFid);
-          showNotification(`📊 Contract data refreshed!`, 'blue');
+        setSpinning1(false);
+        setReels(prev => [newReels[0], prev[1], prev[2]]);
+      }, 1000);
+      setTimeout(() => {
+        setSpinning2(false);
+        setReels(prev => [prev[0], newReels[1], prev[2]]);
+      }, 1500);
+      setTimeout(() => {
+        setSpinning3(false);
+        setReels(prev => [prev[0], prev[1], newReels[2]]);
+        setSpinning(false);
+        
+        if (bigWin) {
+          setHasWon(true);
+          showNotification(`🎉 Potential JACKPOT! Check your wallet for confirmation!`, 'green');
+        } else if (simulatedWin) {
+          showNotification(`💰 Nice win! Check your wallet!`, 'green');
+        } else {
+          showNotification(`😔 Better luck next time! Try again for $0.06!`, 'orange');
         }
-      }, 10000);
-    }, 2000);
 
-  } catch (error: any) {
-    setSpinning(false);
-    setSpinning1(false);
-    setSpinning2(false);
-    setSpinning3(false);
-    
-    if (error.message.includes('user rejected') || error.message.includes('User denied')) {
-      setError('Transaction cancelled by user');
-    } else if (error.message.includes('insufficient funds')) {
-      setError('Insufficient ETH for transaction');
-    } else {
-      setError(`Spin failed: ${error.message.slice(0, 100)}`);
+        // Refresh contract data after 10 seconds
+        setTimeout(() => {
+          if (userFid) {
+            loadContractData(userFid);
+            showNotification(`📊 Contract data refreshed!`, 'blue');
+          }
+        }, 10000);
+      }, 2000);
+
+    } catch (error: any) {
+      setSpinning(false);
+      setSpinning1(false);
+      setSpinning2(false);
+      setSpinning3(false);
+      
+      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
+        setError('Transaction cancelled by user');
+      } else if (error.message.includes('insufficient funds')) {
+        setError('Insufficient ETH for transaction');
+      } else {
+        setError(`Spin failed: ${error.message.slice(0, 100)}`);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  // Add this function before the return statement
-const handleShare = async () => {
-  try {
-    let shareText;
+  // UPDATED: Share function - only mention jackpot
+  const handleShare = async () => {
+    try {
+      let shareText;
 
-    if (hasWon || hasWonToday) {
-      // Won message
-      shareText = `🎰💰 I just won real ETH from Sloto-caster slot machine game! 
+      if (hasWon || hasWonToday) {
+        // Won message
+        shareText = `🎰💰 I just won real ETH from Sloto-caster slot machine game! 
 
-You can also win - start playing now! 🎯`;
-    } else {
-      // Not won message  
-      shareText = `🎰 I'm playing Sloto-caster where you can earn ETH by getting 7️⃣7️⃣7️⃣ in the slot machine! 
+You can also win - start playing now! 🎯
 
-Give it a try and win ETH! 💰`;
+https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
+      } else {
+        // Not won message  
+        shareText = `🎰 I'm playing Sloto-caster where you can earn ETH by getting 7️⃣7️⃣7️⃣ in the slot machine! 
+
+Hit the $10 jackpot! 💰
+
+https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
+      }
+
+      if (inMiniApp) {
+        // Use Farcaster SDK compose cast
+        const result = await sdk.actions.composeCast({
+          text: shareText,
+        });
+        
+        if (result?.cast) {
+          showNotification('🎉 Cast posted successfully!', 'green');
+        } else {
+          showNotification('📝 Cast composer opened!', 'blue');
+        }
+      } else {
+        // Fallback for non-miniapp environments
+        const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}`;
+        window.open(warpcastUrl, '_blank');
+        showNotification('🚀 Opening cast composer...', 'blue');
+      }
+      
+    } catch (error) {
+      console.error('Share failed:', error);
+      showNotification('❌ Share failed. Try again!', 'red');
     }
-
-    // Create Warpcast compose URL with proper encoding
-    const warpcastUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent('https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster')}`;
-    
-    // Open the compose URL
-    window.open(warpcastUrl, '_blank');
-    showNotification('🚀 Opening cast composer...', 'blue');
-    
-  } catch (error) {
-    console.error('Share failed:', error);
-    showNotification('❌ Share failed. Try again!', 'red');
-  }
-};
+  };
   
-    // Show notification
+  // Show notification
   const showNotification = (message: string, color = 'blue') => {
     const notification = document.createElement('div');
     const colorClasses = {
@@ -440,7 +460,7 @@ Give it a try and win ETH! 💰`;
       {/* Header */}
       <div className="text-center mb-4 sm:mb-6">
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">🎰 Sloto-caster</h1>
-        <p className="text-white/80 text-sm sm:text-base">Pull the liver and Hit 7️⃣7️⃣7️⃣ to win $1.00!</p>
+        <p className="text-white/80 text-sm sm:text-base">Multiple ways to win ETH! Hit the jackpot!</p>
         <div className="text-xs text-white/60 mt-2">
           <a 
             href={`https://basescan.org/address/${CONTRACT_ADDRESS}`}
@@ -463,6 +483,19 @@ Give it a try and win ETH! 💰`;
         </div>
       )}
 
+      {/* Jackpot Status */}
+      <div className="text-center mb-4">
+        {jackpotAvailable ? (
+          <p className="text-yellow-400 font-bold animate-pulse">
+            🏆 $10 JACKPOT STILL AVAILABLE TODAY!
+          </p>
+        ) : (
+          <p className="text-red-400">
+            🏆 Daily jackpot claimed - try tomorrow!
+          </p>
+        )}
+      </div>
+
       {/* Error Display */}
       {error && (
         <div className="bg-red-600/20 border border-red-400 rounded-lg p-3 mb-4 text-center">
@@ -481,7 +514,7 @@ Give it a try and win ETH! 💰`;
         <div className="flex justify-between items-center text-white">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-            <span className="text-sm sm:text-base">Today&apos;s Winners</span>
+            <span className="text-sm sm:text-base">Big Winners Today</span>
           </div>
           <span className="font-bold text-sm sm:text-base">{dailyWinners}/{maxDailyWinners}</span>
         </div>
@@ -506,7 +539,7 @@ Give it a try and win ETH! 💰`;
               <div className="text-xs text-white/60 font-mono mb-2 break-all">{walletAddress}</div>
             )}
             {hasWonToday && (
-              <div className="text-green-400 text-xs sm:text-sm mt-1">✅ Already won today!</div>
+              <div className="text-green-400 text-xs sm:text-sm mt-1">✅ Already won big today!</div>
             )}
           </div>
         </div>
@@ -551,7 +584,7 @@ Give it a try and win ETH! 💰`;
         </div>
         
         <div className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black font-bold text-center py-1.5 sm:py-2 px-2 sm:px-4 rounded-lg mb-3 sm:mb-4 shadow-lg text-xs sm:text-sm">
-          SLOTO-CASTER DELUXE
+          SLOTO-CASTER DELUXE V2
         </div>
         
         <div className="flex justify-center gap-2 sm:gap-3 mb-4 sm:mb-6">
@@ -561,7 +594,11 @@ Give it a try and win ETH! 💰`;
         </div>
 
         <div className="bg-black text-green-400 font-mono text-center py-2 px-2 sm:px-4 rounded mb-3 sm:mb-4 border border-green-400 text-xs sm:text-sm">
-          7️⃣ 7️⃣ 7️⃣ = $1.00 BASE ETH
+          🎰 MULTIPLE WAYS TO WIN! 🎰<br/>
+          💰 7️⃣7️⃣7️⃣ = $10.00<br/>
+          💎 🍒🍒🍒 = $0.30<br/>
+          ⭐ 7️⃣7️⃣ = $0.18<br/>
+          🎯 Any pair = $0.06
         </div>
 
         <button
@@ -578,9 +615,9 @@ Give it a try and win ETH! 💰`;
             {loading ? 'PROCESSING...' :
              spinning ? 'SPINNING...' : 
              !isConnected ? 'CONNECT WALLET' :
-             hasWonToday ? 'ALREADY WON TODAY' :
+             hasWonToday ? 'ALREADY WON BIG TODAY' :
              dailyWinners >= maxDailyWinners ? 'DAILY LIMIT REACHED' : 
-             'PULL THE RIVER'}
+             'PULL THE LEVER'}
           </span>
         </button>
       </div>
@@ -589,8 +626,8 @@ Give it a try and win ETH! 💰`;
       {hasWon && (
         <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg p-4 mb-4 sm:mb-6 text-center border-2 border-yellow-400 shadow-xl">
           <div className="text-3xl sm:text-4xl mb-2">🎰💰🎉</div>
-          <h3 className="text-white font-bold text-lg sm:text-xl mb-2">JACKPOT! 7️⃣7️⃣7️⃣!</h3>
-          <p className="text-white/90 mb-2 sm:mb-4 text-sm sm:text-base">You won $1.00 worth of Base ETH!</p>
+          <h3 className="text-white font-bold text-lg sm:text-xl mb-2">BIG WIN!</h3>
+          <p className="text-white/90 mb-2 sm:mb-4 text-sm sm:text-base">You won ETH!</p>
           <p className="text-white/80 text-xs sm:text-sm">ETH sent automatically to your wallet!</p>
         </div>
       )}
@@ -614,24 +651,26 @@ Give it a try and win ETH! 💰`;
         </button>
       </div>
 
-      {/* ADD THIS: Share Button */}
-<div className="mb-4">
-  <button
-    onClick={handleShare}
-    className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-green-700 hover:to-emerald-700 transition-all duration-200 text-sm sm:text-base border-2 border-green-400 shadow-lg"
-  >
-    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
-    </svg>
-    <span>Share Sloto-caster</span>
-  </button>
-</div>
+      {/* Share Button */}
+      <div className="mb-4">
+        <button
+          onClick={handleShare}
+          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-green-700 hover:to-emerald-700 transition-all duration-200 text-sm sm:text-base border-2 border-green-400 shadow-lg"
+        >
+          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+          </svg>
+          <span>Share Sloto-caster</span>
+        </button>
+      </div>
 
       {/* Rules */}
       <div className="mt-4 text-center text-white/60 text-xs leading-relaxed space-y-1">
-        <p>• Hit 7️⃣7️⃣7️⃣ to win $1.00 Base ETH</p>
-        <p>• $0.025 per spin • One win per day • Max 5 winners daily</p>
-        <p>• Live on Base Mainnet</p>
+        <p>• Triple 7️⃣ = $10.00 (1 per day)</p>
+        <p>• Three same = $0.30 (3 per day)</p>
+        <p>• Two 7️⃣ = $0.18 (unlimited)</p>
+        <p>• Any pair = $0.06 (unlimited)</p>
+        <p>• $0.06 per spin • Live on Base Mainnet</p>
       </div>
     </>
   );
@@ -681,7 +720,7 @@ Give it a try and win ETH! 💰`;
         ) : (
           <div className="text-center py-6 sm:py-8">
             <div className="text-3xl sm:text-4xl mb-4">🎯</div>
-            <p className="text-white/80 text-sm sm:text-base">No winners yet! Be the first to hit 7️⃣7️⃣7️⃣</p>
+            <p className="text-white/80 text-sm sm:text-base">No winners yet! Be the first to win big!</p>
           </div>
         )}
       </div>
@@ -689,60 +728,59 @@ Give it a try and win ETH! 💰`;
   );
 
   const renderHistoryPage = () => (
-  <>
-    <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-      <button
-        onClick={() => setCurrentPage('game')}
-        className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
-      >
-        <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-      </button>
-      <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
-    </div>
-
-    {isConnected ? (
-      <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
-        <div className="text-center mb-4 sm:mb-6">
-          <div className="text-3xl sm:text-4xl mb-2">📈</div>
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-              <div className="text-lg sm:text-2xl font-bold text-blue-400">{playerStats.totalSpins}</div>
-              <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
-            </div>
-            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-              <div className="text-lg sm:text-2xl font-bold text-green-400">{playerStats.totalWins}</div>
-              <div className="text-white/80 text-xs sm:text-sm">Wins</div>
-            </div>
-            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-              <div className="text-lg sm:text-2xl font-bold text-yellow-400">
-                {playerStats.totalSpins > 0 ? `${((playerStats.totalWins / playerStats.totalSpins) * 100).toFixed(1)}%` : '0%'}
-              </div>
-              <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center mt-4">
-            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-              <div className="text-lg sm:text-xl font-bold text-red-400">{playerStats.totalSpent.toFixed(4)} ETH</div>
-              <div className="text-white/80 text-xs sm:text-sm">Total Spent</div>
-            </div>
-            <div className="bg-white/5 rounded-lg p-2 sm:p-3">
-              <div className="text-lg sm:text-xl font-bold text-emerald-400">{playerStats.totalWinnings.toFixed(4)} ETH</div>
-              <div className="text-white/80 text-xs sm:text-sm">Total Won</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="text-center">
-          <div className="text-xs sm:text-sm text-white/60 space-y-1">
-            <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
-            <p>Network: Base Mainnet</p>
-          </div>
-        </div>
+    <>
+      <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <button
+          onClick={() => setCurrentPage('game')}
+          className="bg-white/10 p-2 rounded-lg hover:bg-white/20 transition-colors flex-shrink-0"
+        >
+          <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        </button>
+        <h1 className="text-xl sm:text-2xl font-bold text-white">📊 My Stats</h1>
       </div>
-    ) : (
-      
+
+      {isConnected ? (
+        <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-orange-400">
+          <div className="text-center mb-4 sm:mb-6">
+            <div className="text-3xl sm:text-4xl mb-2">📈</div>
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-2">FID {userFid} Stats</h2>
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                <div className="text-lg sm:text-2xl font-bold text-blue-400">{playerStats.totalSpins}</div>
+                <div className="text-white/80 text-xs sm:text-sm">Total Spins</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                <div className="text-lg sm:text-2xl font-bold text-green-400">{playerStats.totalWins}</div>
+                <div className="text-white/80 text-xs sm:text-sm">Wins</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                <div className="text-lg sm:text-2xl font-bold text-yellow-400">
+                  {playerStats.totalSpins > 0 ? `${((playerStats.totalWins / playerStats.totalSpins) * 100).toFixed(1)}%` : '0%'}
+                </div>
+                <div className="text-white/80 text-xs sm:text-sm">Win Rate</div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 text-center mt-4">
+              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                <div className="text-lg sm:text-xl font-bold text-red-400">{playerStats.totalSpent.toFixed(4)} ETH</div>
+                <div className="text-white/80 text-xs sm:text-sm">Total Spent</div>
+              </div>
+              <div className="bg-white/5 rounded-lg p-2 sm:p-3">
+                <div className="text-lg sm:text-xl font-bold text-emerald-400">{playerStats.totalWinnings.toFixed(4)} ETH</div>
+                <div className="text-white/80 text-xs sm:text-sm">Total Won</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <div className="text-xs sm:text-sm text-white/60 space-y-1">
+              <p className="break-all">Contract: {CONTRACT_ADDRESS}</p>
+              <p>Network: Base Mainnet</p>
+            </div>
+          </div>
+        </div>
+      ) : (
         <div className="bg-white/10 rounded-lg p-6 sm:p-8 text-center border border-orange-400">
           <div className="text-4xl sm:text-6xl mb-4">🔒</div>
           <h2 className="text-lg sm:text-xl font-bold text-white mb-2">Connect Wallet</h2>
