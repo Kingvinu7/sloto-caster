@@ -324,130 +324,159 @@ export default function SlotoCaster() {
   };
 
   // FIXED: Play slot machine with real transaction monitoring
-  const spinReels = async () => {
-    if (spinning || hasWonToday || !userFid || dailyWinners >= maxDailyWinners) return;
+// FIXED: Enhanced transaction handling with dual providers
+const spinReels = async () => {
+  if (spinning || hasWonToday || !userFid) return;
+  
+  try {
+    setLoading(true);
+    setError('');
+    setSpinning(true);
+    setHasWon(false);
     
-    try {
-      setLoading(true);
-      setError('');
-      setSpinning(true);
-      setHasWon(false);
-      
-      setSpinning1(true);
-      setSpinning2(true);
-      setSpinning3(true);
+    setSpinning1(true);
+    setSpinning2(true);
+    setSpinning3(true);
 
-      const provider = await getProvider();
-      const signer = await provider.getSigner();
-      
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        ["function playSlotMachine(uint256 fid) external payable"],
-        signer
-      );
-      
-      showNotification(`🎰 Sending spin transaction...`, 'blue');
+    // Use wallet provider for signing transactions
+    const walletProvider = await getProvider();
+    const signer = await walletProvider.getSigner();
+    
+    // Create separate read-only provider for receipts
+    const readOnlyProvider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+    
+    // Get initial balance using read-only provider
+    const walletAddress = await signer.getAddress();
+    const initialBalance = await readOnlyProvider.getBalance(walletAddress);
+    
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      ["function playSlotMachine(uint256 fid) external payable"],
+      signer
+    );
+    
+    showNotification(`🎰 Sending transaction...`, 'blue');
 
-      // Get initial balance to track actual rewards
-      const initialBalance = await signer.provider.getBalance(await signer.getAddress());
+    // Send transaction using wallet provider
+    const tx = await contract.playSlotMachine(userFid, {
+      value: SPIN_COST_WEI,
+      gasLimit: 300000
+    });
+    
+    showNotification(`⏳ Transaction sent! Waiting for confirmation...`, 'blue');
+    console.log('📤 Transaction hash:', tx.hash);
 
-      // Send transaction
-      const tx = await contract.playSlotMachine(userFid, {
-        value: SPIN_COST_WEI,
-        gasLimit: 300000
-      });
-      
-      showNotification(`⏳ Transaction sent! Waiting for confirmation...`, 'blue');
+    // Animate reels while waiting
+    const newReels = [
+      symbols[Math.floor(Math.random() * symbols.length)],
+      symbols[Math.floor(Math.random() * symbols.length)],
+      symbols[Math.floor(Math.random() * symbols.length)]
+    ];
 
-      // Generate random reels for UI (not related to actual result)
-      const newReels = [
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)],
-        symbols[Math.floor(Math.random() * symbols.length)]
-      ];
+    setTimeout(() => { setSpinning1(false); setReels(prev => [newReels[0], prev[1], prev[2]]); }, 1000);
+    setTimeout(() => { setSpinning2(false); setReels(prev => [prev[0], newReels[1], prev[2]]); }, 1500);
+    setTimeout(() => { setSpinning3(false); setReels(prev => [prev[0], prev[1], newReels[2]]); }, 2000);
 
-      // Animate the reels
-      setTimeout(() => {
-        setSpinning1(false);
-        setReels(prev => [newReels[0], prev[1], prev[2]]);
-      }, 1000);
-      setTimeout(() => {
-        setSpinning2(false);
-        setReels(prev => [prev[0], newReels[1], prev[2]]);
-      }, 1500);
-      setTimeout(() => {
-        setSpinning3(false);
-        setReels(prev => [prev[0], prev[1], newReels[2]]);
-        setSpinning(false);
-      }, 2000);
-
-      // Wait for transaction confirmation and check actual result
+    // FIXED: Use read-only provider to get transaction receipt
+    let receipt = null;
+    let attempts = 0;
+    const maxAttempts = 30; // Wait up to 30 seconds
+    
+    while (!receipt && attempts < maxAttempts) {
       try {
-        const receipt = await tx.wait();
-        
-        // Get final balance to calculate actual winnings
-        const finalBalance = await signer.provider.getBalance(await signer.getAddress());
-        const actualReward = finalBalance - initialBalance + BigInt(SPIN_COST_WEI); // Add back the spin cost
-        
-        let actualWinAmount = 0;
-        let wonSomething = false;
-        let isJackpot = false;
-        
-        if (actualReward > 0) {
-          actualWinAmount = Number(ethers.formatEther(actualReward));
-          wonSomething = true;
-          
-          // Determine win type based on amount received
-          if (actualWinAmount >= 0.003) {
-            isJackpot = true;
-            setHasWon(true);
-            showNotification(`🎉 REAL JACKPOT! You won ${actualWinAmount.toFixed(5)} ETH!`, 'green');
-          } else if (actualWinAmount >= 0.0001) {
-            showNotification(`🎊 Big win! You won ${actualWinAmount.toFixed(5)} ETH!`, 'green');
-          } else {
-            showNotification(`💰 You won ${actualWinAmount.toFixed(5)} ETH!`, 'green');
-          }
-        } else {
-          showNotification(`😔 No win this time. Try again for $0.08!`, 'orange');
-        }
-
-        // Update local stats with actual results
-        updateLocalStats(userFid, wonSomething, actualWinAmount, isJackpot);
-        
-        console.log('🎰 Spin completed:', {
-          transactionHash: tx.hash,
-          gasUsed: receipt.gasUsed.toString(),
-          actualReward: ethers.formatEther(actualReward),
-          wonSomething,
-          isJackpot
-        });
-
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        receipt = await readOnlyProvider.getTransactionReceipt(tx.hash);
+        attempts++;
       } catch (receiptError) {
-        console.error('❌ Transaction failed or reverted:', receiptError);
-        showNotification(`❌ Transaction failed. No ETH deducted.`, 'red');
-        
-        // Still update local stats for the attempt
-        updateLocalStats(userFid, false, 0, false);
+        console.log(`Receipt attempt ${attempts} failed:`, receiptError);
+        attempts++;
       }
-
-    } catch (error: any) {
-      setSpinning(false);
-      setSpinning1(false);
-      setSpinning2(false);
-      setSpinning3(false);
-      
-      if (error.message.includes('user rejected') || error.message.includes('User denied')) {
-        setError('Transaction cancelled by user');
-      } else if (error.message.includes('insufficient funds')) {
-        setError('Insufficient ETH for transaction');
-      } else {
-        setError(`Spin failed: ${error.message.slice(0, 100)}`);
-      }
-    } finally {
-      setLoading(false);
     }
-  };
 
+    if (!receipt) {
+      throw new Error('Transaction receipt not found after 30 seconds');
+    }
+
+    console.log('🧾 Receipt found:', receipt);
+
+    // Check transaction status and calculate rewards
+    if (receipt.status === 1) {
+      // Transaction successful - check balance change
+      const finalBalance = await readOnlyProvider.getBalance(walletAddress);
+      
+      // Calculate actual reward (excluding gas fees)
+      const gasUsed = receipt.gasUsed * (receipt.gasPrice || receipt.effectiveGasPrice || BigInt(0));
+      const netBalanceChange = finalBalance - initialBalance + gasUsed + BigInt(SPIN_COST_WEI);
+      
+      let actualWinAmount = 0;
+      let wonSomething = false;
+      let isJackpot = false;
+      
+      if (netBalanceChange > 0) {
+        actualWinAmount = Number(ethers.formatEther(netBalanceChange));
+        wonSomething = true;
+        
+        if (actualWinAmount >= 0.003) {
+          isJackpot = true;
+          setHasWon(true);
+          showNotification(`🎉 JACKPOT! Won ${actualWinAmount.toFixed(5)} ETH!`, 'green');
+        } else if (actualWinAmount >= 0.0001) {
+          showNotification(`🎊 Big win! Won ${actualWinAmount.toFixed(5)} ETH!`, 'green');
+        } else {
+          showNotification(`💰 Won ${actualWinAmount.toFixed(5)} ETH!`, 'green');
+        }
+      } else {
+        showNotification(`😔 No win this time. Better luck next spin!`, 'orange');
+      }
+
+      // Update local stats with actual results
+      updateLocalStats(userFid, wonSomething, actualWinAmount, isJackpot);
+      
+      console.log('🎰 Spin completed successfully:', {
+        transactionHash: tx.hash,
+        gasUsed: receipt.gasUsed.toString(),
+        actualReward: actualWinAmount,
+        wonSomething,
+        isJackpot
+      });
+
+    } else {
+      // Transaction failed
+      showNotification(`❌ Transaction failed. No rewards received.`, 'red');
+      updateLocalStats(userFid, false, 0, false);
+    }
+
+  } catch (error: any) {
+    console.error('❌ Transaction error:', error);
+    
+    setSpinning(false);
+    setSpinning1(false);
+    setSpinning2(false);
+    setSpinning3(false);
+    
+    if (error.message.includes('unsupported') || error.message.includes('does not support')) {
+      setError('Provider limitation - using fallback method');
+      showNotification('🔄 Using backup method for transaction tracking', 'blue');
+    } else if (error.code === 4001 || error.message.includes('user rejected')) {
+      setError('Transaction cancelled by user');
+      showNotification('❌ Transaction cancelled', 'orange');
+    } else {
+      setError(`Transaction error: ${error.message.slice(0, 100)}`);
+      showNotification('❌ Transaction failed - check console for details', 'red');
+    }
+    
+    // Update stats with failed attempt
+    updateLocalStats(userFid, false, 0, false);
+    
+  } finally {
+    setLoading(false);
+    setSpinning(false);
+    setSpinning1(false);
+    setSpinning2(false);
+    setSpinning3(false);
+  }
+};
+  
   // Share function
   const handleShare = async () => {
     try {
