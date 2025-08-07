@@ -405,8 +405,9 @@ const spinReels = async () => {
       const finalBalance = await readOnlyProvider.getBalance(walletAddress);
       
       // Calculate actual reward (excluding gas fees)
-      const gasUsed = receipt.gasUsed * (receipt.gasPrice || receipt.effectiveGasPrice || BigInt(0));
-      const netBalanceChange = finalBalance - initialBalance + gasUsed + BigInt(SPIN_COST_WEI);
+      // ✅ Simple balance comparison without gas calculations:
+const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
+      
       
       let actualWinAmount = 0;
       let wonSomething = false;
