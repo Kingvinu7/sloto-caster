@@ -403,6 +403,19 @@ const spinReels = async () => {
     if (receipt.status === 1) {
       // Transaction successful - check balance change
       const finalBalance = await readOnlyProvider.getBalance(walletAddress);
+
+      // ENHANCED DEBUGGING - Log everything
+  console.log('💰 BALANCE DEBUGGING:');
+  console.log('Initial balance:', ethers.formatEther(initialBalance));
+  console.log('Final balance:', ethers.formatEther(finalBalance));
+  console.log('Spin cost:', ethers.formatEther(BigInt(SPIN_COST_WEI)));
+  
+  const rawBalanceChange = finalBalance - initialBalance;
+  const balanceChange = rawBalanceChange + BigInt(SPIN_COST_WEI);
+  
+  console.log('Raw balance change:', ethers.formatEther(rawBalanceChange));
+  console.log('Balance change + spin cost:', ethers.formatEther(balanceChange));
+  console.log('Balance change > 0?', balanceChange > 0);
       
       // Simple balance comparison (add back spin cost to detect net gain)
       const balanceChange = finalBalance - initialBalance + BigInt(SPIN_COST_WEI);
