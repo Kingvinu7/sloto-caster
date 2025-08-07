@@ -189,6 +189,13 @@ export default function SlotoCaster() {
     }
   };
 
+  // FIXED: Auto-refresh stats when viewing history page
+  useEffect(() => {
+    if (currentPage === 'history' && isConnected && userFid) {
+      loadContractData(userFid);
+    }
+  }, [currentPage, isConnected, userFid]); // ✅ FIXED: Hook moved to top level
+
   // Farcaster initialization
   useEffect(() => {
     const initFarcaster = async () => {
@@ -215,7 +222,7 @@ export default function SlotoCaster() {
       }
     };
     initFarcaster();
-  }, []);
+  }, []); // ✅ FIXED: Removed unnecessary dependencies
 
   // Load ethers if needed (fallback)
   useEffect(() => {
@@ -783,15 +790,8 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
     </>
   );
 
-  // ENHANCED: Stats page with auto-refresh and better display
+  // FIXED: Stats page without useEffect inside render function
   const renderHistoryPage = () => {
-    // Auto-refresh stats when viewing this page
-    useEffect(() => {
-      if (currentPage === 'history' && isConnected && userFid) {
-        loadContractData(userFid);
-      }
-    }, [currentPage, isConnected, userFid]);
-
     return (
       <>
         <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
