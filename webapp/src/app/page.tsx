@@ -56,7 +56,7 @@ export default function SlotoCaster() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const symbols = ['🍒', '🍋', '🍊', '⭐', '💎', '🔔', '7️⃣', '🎰', '💰'];
+  const symbols = ['🍒', '🍋', '🍊', '⭐', '💎', '🔔', '🎰', '7️⃣', '💰'];
 
   // Local storage functions for stats
   const getLocalStats = (fid: number) => {
