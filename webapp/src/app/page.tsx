@@ -227,6 +227,26 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
   }
 };
   
+const handleViewProfile = async (fid: string) => {
+  try {
+    // Type-safe FID conversion
+    const fidNumber = typeof fid === 'string' ? parseInt(fid, 10) : Number(fid);
+    
+    if (isNaN(fidNumber)) {
+      console.error('Invalid FID:', fid);
+      return;
+    }
+
+    await sdk.actions.viewProfile({
+      fid: fidNumber
+    });
+  } catch (error) {
+    console.error('Failed to view profile:', error);
+    // Only uncomment the line below if showNotification function exists
+    // showNotification(`Failed to open profile for FID ${fid}`, 'red');
+  }
+};
+  
   
   
   // FIXED: Only call functions that actually exist
@@ -1051,7 +1071,7 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
     </>
   );
 
- const renderLeaderboardPage = () => (
+const renderLeaderboardPage = () => (
   <>
     <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
       <button
@@ -1102,7 +1122,19 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
                     <div className="flex items-center gap-2 mb-1">
                       <div className="text-white text-sm sm:text-lg font-bold">FID: {player.fid}</div>
                       {player.isWinner && <div className="text-green-400 text-xs bg-green-400/20 px-2 py-1 rounded">WINNER</div>}
+                      {/* Profile View Button */}
+                      <button
+                        onClick={() => handleViewProfile(player.fid)}
+                        className="bg-purple-500/20 hover:bg-purple-500/40 border border-purple-500/30 text-purple-300 px-2 py-1 rounded-full text-xs transition-all duration-200 flex items-center gap-1 hover:scale-105"
+                        title={`View profile for FID ${player.fid}`}
+                      >
+                        <span>👤</span>
+                        <span>Profile</span>
+                      </button>
                     </div>
+                    {player.fullAddress && (
+                      <div className="font-mono text-white/60 text-xs truncate">{player.address}</div>
+                    )}
                     <div className="flex items-center gap-4 text-xs text-white/80 mt-1">
                       <span>🎰 {player.totalSpins} spins</span>
                       <span>🏆 {player.totalWins} wins</span>
@@ -1132,6 +1164,7 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
     </div>
   </>
 );
+  
   
   
   // Stats page with local storage display
