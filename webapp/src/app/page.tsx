@@ -126,52 +126,100 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
   const fetchAllPlayers = async () => {
   try {
     setLoadingPlayers(true);
+    const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
     
-    // Get local storage data for all players
-    const localPlayers = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('sloto-stats-')) {
-        const fid = key.replace('sloto-stats-', '');
-        const statsData = localStorage.getItem(key);
+    console.log('🔍 Fetching players from blockchain (chunked approach)...');
+    
+    const contract = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      ["event GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint8 winType, uint256 amount, uint256 day)"],
+      provider
+    );
+
+    const deploymentBlock = 33888108;
+    const currentBlock = await provider.getBlockNumber();
+    const playerDatabase = new Map();
+    
+    // Process in smaller chunks to avoid timeouts
+    const chunkSize = 10000; // Scan 10k blocks at a time
+    let processed = 0;
+    
+    for (let fromBlock = deploymentBlock; fromBlock < currentBlock; fromBlock += chunkSize) {
+      try {
+        const toBlock = Math.min(fromBlock + chunkSize - 1, currentBlock);
+        console.log(`📊 Scanning blocks ${fromBlock} to ${toBlock}`);
         
-        if (statsData) {
-          try {
-            const stats = JSON.parse(statsData);
-            localPlayers.push({
+        const filter = contract.filters.GamePlayed();
+        const events = await contract.queryFilter(filter, fromBlock, toBlock);
+        
+        events.forEach((event) => {
+          const fid = event.args.fid.toString();
+          const wallet = event.args.wallet;
+          const won = event.args.won;
+          const amount = Number(ethers.formatEther(event.args.amount || 0));
+          
+          if (!playerDatabase.has(fid)) {
+            playerDatabase.set(fid, {
               fid: fid,
-              address: 'Player',
-              timestamp: 'Recent',
-              reward: stats.totalWinnings > 0 ? `$${(stats.totalWinnings * 3877).toFixed(2)}` : '$0.00',
-              isWinner: stats.totalWins > 0,
-              totalSpins: stats.totalSpins || 0,
-              totalWins: stats.totalWins || 0,
-              totalSpent: stats.totalSpent || 0,
-              totalWinnings: stats.totalWinnings || 0
+              address: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
+              fullAddress: wallet,
+              totalSpins: 0,
+              totalWins: 0,
+              totalSpent: 0,
+              totalWinnings: 0,
+              isWinner: false,
+              timestamp: 'Historical',
+              reward: '$0.00'
             });
-          } catch (e) {
-            // Skip invalid data
           }
-        }
+          
+          const player = playerDatabase.get(fid);
+          player.totalSpins++;
+          player.totalSpent += 0.00002;
+          
+          if (won) {
+            player.totalWins++;
+            player.totalWinnings += amount;
+            player.isWinner = true;
+          }
+        });
+        
+        processed += (toBlock - fromBlock + 1);
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (chunkError) {
+        console.log(`Failed to scan blocks ${fromBlock}-${Math.min(fromBlock + chunkSize - 1, currentBlock)}`);
+        // Continue with next chunk instead of failing completely
       }
     }
-
-    // Sort by winnings, then by spins
-    const sortedPlayers = localPlayers.sort((a, b) => {
-      if (b.totalWinnings !== a.totalWinnings) {
-        return (b.totalWinnings || 0) - (a.totalWinnings || 0);
-      }
-      return (b.totalSpins || 0) - (a.totalSpins || 0);
+    
+    // Convert to array and add final formatting
+    const allPlayersArray = Array.from(playerDatabase.values());
+    allPlayersArray.forEach(player => {
+      player.reward = player.totalWinnings > 0 ? `$${(player.totalWinnings * 3877).toFixed(2)}` : '$0.00';
     });
-
+    
+    const sortedPlayers = allPlayersArray.sort((a, b) => {
+      if (b.totalWinnings !== a.totalWinnings) {
+        return b.totalWinnings - a.totalWinnings;
+      }
+      return b.totalSpins - a.totalSpins;
+    });
+    
+    console.log(`📈 Successfully processed ${sortedPlayers.length} unique players from ${processed} blocks`);
     setAllPlayers(sortedPlayers);
+    
   } catch (error) {
-    console.error('Failed to fetch players:', error);
+    console.error('❌ Failed to fetch blockchain data:', error);
+    // Graceful fallback
     setAllPlayers([]);
   } finally {
     setLoadingPlayers(false);
   }
 };
+  
   
   
   // FIXED: Only call functions that actually exist
