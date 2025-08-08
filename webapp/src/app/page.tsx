@@ -933,7 +933,154 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
     </>
   );
 
-  const renderLeaderboardPage = () => (
+  const renderLeaderboardPage = () => {
+  const [allPlayers, setAllPlayers] = useState<any[]>([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+
+  // Function to fetch all player data
+  const fetchAllPlayers = async () => {
+    if (!CONTRACT_ADDRESS) return;
+    
+    try {
+      setLoadingPlayers(true);
+      const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
+      
+      // Get contract instance for reading
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        [
+          "function getTotalWinners() external view returns (uint256)",
+          "function getLatestWinners(uint256 count) external view returns (tuple(uint256 fid, address wallet, uint256 timestamp, uint256 day, uint256 amount, uint8 winType)[])"
+        ],
+        provider
+      );
+
+      // Get winners data
+      let winners = [];
+      try {
+        const totalWinners = await contract.getTotalWinners();
+        if (Number(totalWinners) > 0) {
+          const winnersResult = await contract.getLatestWinners(Number(totalWinners));
+          winners = winnersResult.map((winner: any) => ({
+            fid: winner.fid.toString(),
+            address: `${winner.wallet.slice(0, 6)}...${winner.wallet.slice(-4)}`,
+            fullAddress: winner.wallet,
+            timestamp: new Date(Number(winner.timestamp) * 1000).toLocaleString(),
+            reward: winner.winType === 4 ? '$11.63' : winner.winType === 3 ? '$0.39' : winner.winType === 2 ? '$0.23' : '$0.08',
+            winType: Number(winner.winType),
+            amount: Number(ethers.formatEther(winner.amount)),
+            isWinner: true,
+            totalSpins: 1, // We'll get more accurate data if available
+            totalWins: 1
+          }));
+        }
+      } catch (error) {
+        console.log('Failed to fetch winners, using local data only');
+      }
+
+      // Get local storage data for all players who have played
+      const localPlayers = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sloto-stats-')) {
+          const fid = key.replace('sloto-stats-', '');
+          const statsData = localStorage.getItem(key);
+          
+          if (statsData) {
+            try {
+              const stats = JSON.parse(statsData);
+              
+              // Check if this FID is already in winners
+              const existingWinner = winners.find(w => w.fid === fid);
+              
+              if (!existingWinner) {
+                // Add as non-winner player
+                localPlayers.push({
+                  fid: fid,
+                  address: 'Local Player', // We don't have wallet address from local storage
+                  fullAddress: '',
+                  timestamp: 'Recent',
+                  reward: '$0.00',
+                  winType: 0,
+                  amount: 0,
+                  isWinner: false,
+                  totalSpins: stats.totalSpins || 0,
+                  totalWins: stats.totalWins || 0,
+                  totalSpent: stats.totalSpent || 0,
+                  totalWinnings: stats.totalWinnings || 0
+                });
+              } else {
+                // Update winner with more complete stats
+                existingWinner.totalSpins = stats.totalSpins || 1;
+                existingWinner.totalWins = stats.totalWins || 1;
+                existingWinner.totalSpent = stats.totalSpent || 0;
+                existingWinner.totalWinnings = stats.totalWinnings || existingWinner.amount;
+              }
+            } catch (e) {
+              console.log('Failed to parse stats for FID:', fid);
+            }
+          }
+        }
+      }
+
+      // Combine and sort all players
+      const allPlayersData = [...winners, ...localPlayers].sort((a, b) => {
+        // Sort by total winnings first, then by total spins
+        if (b.totalWinnings !== a.totalWinnings) {
+          return (b.totalWinnings || 0) - (a.totalWinnings || 0);
+        }
+        return (b.totalSpins || 0) - (a.totalSpins || 0);
+      });
+
+      setAllPlayers(allPlayersData);
+
+    } catch (error) {
+      console.error('Failed to fetch all players:', error);
+      
+      // Fallback: show only local storage data
+      const localOnlyPlayers = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sloto-stats-')) {
+          const fid = key.replace('sloto-stats-', '');
+          const statsData = localStorage.getItem(key);
+          
+          if (statsData) {
+            try {
+              const stats = JSON.parse(statsData);
+              localOnlyPlayers.push({
+                fid: fid,
+                address: 'Local Player',
+                fullAddress: '',
+                timestamp: 'Recent',
+                reward: stats.totalWinnings > 0 ? `$${(stats.totalWinnings * 3877).toFixed(2)}` : '$0.00',
+                winType: 0,
+                amount: stats.totalWinnings || 0,
+                isWinner: stats.totalWins > 0,
+                totalSpins: stats.totalSpins || 0,
+                totalWins: stats.totalWins || 0,
+                totalSpent: stats.totalSpent || 0,
+                totalWinnings: stats.totalWinnings || 0
+              });
+            } catch (e) {
+              console.log('Failed to parse local stats');
+            }
+          }
+        }
+      }
+      
+      setAllPlayers(localOnlyPlayers.sort((a, b) => (b.totalWinnings || 0) - (a.totalWinnings || 0)));
+    } finally {
+      setLoadingPlayers(false);
+    }
+  };
+
+  // Fetch data when page loads
+  useEffect(() => {
+    fetchAllPlayers();
+  }, []);
+
+  return (
     <>
       <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
         <button
@@ -943,33 +1090,66 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
           <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </button>
         <h1 className="text-xl sm:text-2xl font-bold text-white">🏆 Hall of Fame</h1>
+        <button
+          onClick={fetchAllPlayers}
+          disabled={loadingPlayers}
+          className="bg-purple-600 px-3 py-1 rounded text-white text-xs hover:bg-purple-700 ml-auto disabled:opacity-50 flex items-center gap-1"
+        >
+          <div className={loadingPlayers ? 'animate-spin' : ''}>🔄</div>
+          {loadingPlayers ? 'Loading...' : 'Refresh'}
+        </button>
       </div>
 
       <div className="bg-white/10 rounded-lg p-4 sm:p-6 border border-purple-400">
         <div className="text-center mb-4 sm:mb-6">
           <div className="text-4xl sm:text-6xl mb-2">🏆</div>
-          <h2 className="text-lg sm:text-xl font-bold text-white mb-2">SLOTO-CASTER CHAMPIONS</h2>
-          <p className="text-white/80 text-sm sm:text-base">Live winners from Base Mainnet!</p>
+          <h2 className="text-lg sm:text-xl font-bold text-white mb-2">SLOTO-CASTER LEADERBOARD</h2>
+          <p className="text-white/80 text-sm sm:text-base">All players ranked by performance!</p>
+          <div className="text-white/60 text-xs mt-2">
+            Showing {allPlayers.length} total players
+          </div>
         </div>
 
-        {leaderboard.length > 0 ? (
-          <div className="space-y-3 sm:space-y-4">
-            {leaderboard.map((winner, index) => (
-              <div key={index} className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
+        {loadingPlayers ? (
+          <div className="text-center py-6 sm:py-8">
+            <div className="text-3xl sm:text-4xl mb-4">⏳</div>
+            <p className="text-white/80 text-sm sm:text-base">Loading player data...</p>
+          </div>
+        ) : allPlayers.length > 0 ? (
+          <div className="space-y-3 sm:space-y-4 max-h-96 overflow-y-auto">
+            {allPlayers.map((player, index) => (
+              <div key={`${player.fid}-${index}`} className="bg-white/5 rounded-lg p-3 sm:p-4 border border-white/10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
                     <div className="text-2xl sm:text-3xl flex-shrink-0">
-                      {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '🏅'}
+                      {player.isWinner ? 
+                        (index === 0 ? '👑' : index === 1 ? '🥇' : index === 2 ? '🥈' : index === 3 ? '🥉' : '🏆') :
+                        '🎰'
+                      }
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-mono text-white text-sm sm:text-lg font-bold truncate">{winner.address}</div>
-                      <div className="text-blue-400 text-xs sm:text-sm">FID: {winner.fid}</div>
-                      <div className="text-green-400 font-bold text-xs sm:text-sm">{winner.reward}</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="text-white text-sm sm:text-lg font-bold">FID: {player.fid}</div>
+                        {player.isWinner && <div className="text-green-400 text-xs bg-green-400/20 px-2 py-1 rounded">WINNER</div>}
+                      </div>
+                      {player.fullAddress && (
+                        <div className="font-mono text-white/60 text-xs truncate">{player.address}</div>
+                      )}
+                      <div className="flex items-center gap-4 text-xs text-white/80 mt-1">
+                        <span>🎰 {player.totalSpins} spins</span>
+                        <span>🏆 {player.totalWins} wins</span>
+                        {player.totalWinnings > 0 && (
+                          <span className="text-green-400">💰 {player.totalWinnings.toFixed(4)} ETH</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0 ml-2">
-                    <div className="text-white/80 text-xs sm:text-sm">{winner.timestamp}</div>
-                    <div className="text-yellow-400 font-semibold text-xs">{winner.day}</div>
+                    <div className="text-green-400 font-bold text-sm">{player.reward}</div>
+                    <div className="text-white/60 text-xs">
+                      {player.totalSpins > 0 ? `${((player.totalWins / player.totalSpins) * 100).toFixed(1)}% win rate` : 'No spins'}
+                    </div>
+                    <div className="text-yellow-400 font-semibold text-xs">{player.timestamp}</div>
                   </div>
                 </div>
               </div>
@@ -978,13 +1158,14 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
         ) : (
           <div className="text-center py-6 sm:py-8">
             <div className="text-3xl sm:text-4xl mb-4">🎯</div>
-            <p className="text-white/80 text-sm sm:text-base">No winners yet! Be the first to win big!</p>
+            <p className="text-white/80 text-sm sm:text-base">No players found! Be the first to spin!</p>
           </div>
         )}
       </div>
     </>
   );
-
+};
+        
   // Stats page with local storage display
   const renderHistoryPage = () => {
     return (
