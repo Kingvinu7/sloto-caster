@@ -123,6 +123,7 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
     throw new Error('No wallet provider found');
   };
 
+
   const fetchAllPlayers = async () => {
   try {
     setLoadingPlayers(true);
@@ -152,35 +153,41 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
         const filter = contract.filters.GamePlayed();
         const events = await contract.queryFilter(filter, fromBlock, toBlock);
         
+        // ✅ FIXED: Type guard to ensure we only process EventLog objects
         events.forEach((event) => {
-          const fid = event.args.fid.toString();
-          const wallet = event.args.wallet;
-          const won = event.args.won;
-          const amount = Number(ethers.formatEther(event.args.amount || 0));
-          
-          if (!playerDatabase.has(fid)) {
-            playerDatabase.set(fid, {
-              fid: fid,
-              address: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
-              fullAddress: wallet,
-              totalSpins: 0,
-              totalWins: 0,
-              totalSpent: 0,
-              totalWinnings: 0,
-              isWinner: false,
-              timestamp: 'Historical',
-              reward: '$0.00'
-            });
-          }
-          
-          const player = playerDatabase.get(fid);
-          player.totalSpins++;
-          player.totalSpent += 0.00002;
-          
-          if (won) {
-            player.totalWins++;
-            player.totalWinnings += amount;
-            player.isWinner = true;
+          // Check if this is an EventLog with args property
+          if ('args' in event && event.args) {
+            const fid = event.args.fid.toString();
+            const wallet = event.args.wallet;
+            const won = event.args.won;
+            const amount = Number(ethers.formatEther(event.args.amount || 0));
+            
+            if (!playerDatabase.has(fid)) {
+              playerDatabase.set(fid, {
+                fid: fid,
+                address: `${wallet.slice(0, 6)}...${wallet.slice(-4)}`,
+                fullAddress: wallet,
+                totalSpins: 0,
+                totalWins: 0,
+                totalSpent: 0,
+                totalWinnings: 0,
+                isWinner: false,
+                timestamp: 'Historical',
+                reward: '$0.00'
+              });
+            }
+            
+            const player = playerDatabase.get(fid);
+            if (player) {
+              player.totalSpins++;
+              player.totalSpent += 0.00002;
+              
+              if (won) {
+                player.totalWins++;
+                player.totalWinnings += amount;
+                player.isWinner = true;
+              }
+            }
           }
         });
         
