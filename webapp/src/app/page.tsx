@@ -410,41 +410,48 @@ const spinReels = async () => {
     let actualWinAmount = 0;
     let wonSomething = false;
     
-    try {
-      // Your existing contract emits: GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint8 winType, uint256 amount, uint256 day)
-      // We need to find this event in the transaction logs
-      const gamePlayedTopic = ethers.id("GamePlayed(uint256,address,bool,uint8,uint256,uint256)");
-      const gameLog = receipt.logs.find(log => log.topics && log.topics[0] === gamePlayedTopic);
+    // Replace the problematic section in your spinReels function (around line 420-435)
+// FIXED: Add null check for decoded result
+
+try {
+  // Your existing contract emits: GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint8 winType, uint256 amount, uint256 day)
+  // We need to find this event in the transaction logs
+  const gamePlayedTopic = ethers.id("GamePlayed(uint256,address,bool,uint8,uint256,uint256)");
+  const gameLog = receipt.logs.find(log => log.topics && log.topics[0] === gamePlayedTopic);
+  
+  if (gameLog) {
+    console.log('📊 Found GamePlayed event:', gameLog);
+    
+    // Decode the event data
+    const iface = new ethers.Interface([
+      "event GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint8 winType, uint256 amount, uint256 day)"
+    ]);
+    const decoded = iface.parseLog(gameLog);
+    
+    // ✅ FIXED: Add null check for decoded result
+    if (decoded) {
+      wonSomething = decoded.args.won;
+      actualWinAmount = Number(ethers.formatEther(decoded.args.amount));
+      const winType = decoded.args.winType;
       
-      if (gameLog) {
-        console.log('📊 Found GamePlayed event:', gameLog);
-        
-        // Decode the event data
-        const iface = new ethers.Interface([
-          "event GamePlayed(uint256 indexed fid, address indexed wallet, bool won, uint8 winType, uint256 amount, uint256 day)"
-        ]);
-        const decoded = iface.parseLog(gameLog);
-        
-        wonSomething = decoded.args.won;
-        actualWinAmount = Number(ethers.formatEther(decoded.args.amount));
-        const winType = decoded.args.winType;
-        
-        console.log('✅ Decoded game results:', {
-          won: wonSomething,
-          winType: winType,
-          amount: actualWinAmount
-        });
-        
-        // Since we can't get actual reels from your current contract,
-        // we'll generate realistic reels based on the win type
-        actualReelResults = generateReelsBasedOnWin(wonSomething, winType, actualWinAmount);
-        
-      } else {
-        console.warn('⚠️ GamePlayed event not found, using balance calculation');
-      }
-    } catch (decodeError) {
-      console.warn('⚠️ Failed to decode event:', decodeError);
+      console.log('✅ Decoded game results:', {
+        won: wonSomething,
+        winType: winType,
+        amount: actualWinAmount
+      });
+      
+      // Since we can't get actual reels from your current contract,
+      // we'll generate realistic reels based on the win type
+      actualReelResults = generateReelsBasedOnWin(wonSomething, winType, actualWinAmount);
+    } else {
+      console.warn('⚠️ Failed to decode GamePlayed event');
     }
+  } else {
+    console.warn('⚠️ GamePlayed event not found, using balance calculation');
+  }
+} catch (decodeError) {
+  console.warn('⚠️ Failed to decode event:', decodeError);
+}
 
     // Fallback: Check balance change if event parsing failed
     if (actualReelResults === null) {
