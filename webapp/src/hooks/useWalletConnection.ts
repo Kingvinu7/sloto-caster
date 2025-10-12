@@ -6,7 +6,7 @@ import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/re
 
 export const useWalletConnection = () => {
   const { open } = useAppKit();
-  const { address, isConnected, chainId } = useAppKitAccount();
+  const { address, isConnected } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('eip155');
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
@@ -32,7 +32,6 @@ export const useWalletConnection = () => {
   return {
     address,
     isConnected,
-    chainId,
     provider,
     signer,
     openWalletModal
