@@ -6,7 +6,7 @@ import { EthersAdapter } from '@reown/appkit-adapter-ethers';
 import { base, baseSepolia } from '@reown/appkit/networks';
 
 // Your WalletConnect Project ID - Get one at https://cloud.reown.com
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '4a4bb9096c82b9b1e5fcfbdbe7654b9c';
+const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'a9e76b0ec4e509017100199fb6ff6957';
 
 // Define metadata for your app
 const metadata = {
