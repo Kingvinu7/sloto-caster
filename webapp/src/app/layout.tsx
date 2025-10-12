@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { WalletProvider } from '@/context/WalletProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -55,7 +56,11 @@ export default function RootLayout({
         />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <WalletProvider>
+          {children}
+        </WalletProvider>
+      </body>
     </html>
   );
 }
