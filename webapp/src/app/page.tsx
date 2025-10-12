@@ -12,8 +12,12 @@ import {
 } from 'lucide-react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { ethers } from 'ethers';
+import { useAppKitAccount } from '@reown/appkit/react';
 
 export default function SlotoCaster() {
+  // Reown AppKit wallet connection
+  const { address: reownAddress, isConnected: isReownConnected } = useAppKitAccount();
+
   // Contract details
   const CONTRACT_ADDRESS = "0x3f47191577718C8B184c319316a89D3469335161";
   const BASE_MAINNET_CHAIN_ID = 8453;
@@ -346,6 +350,22 @@ useEffect(() => {
 }, [currentPage]);
   
   
+  // Sync Reown wallet connection state
+  useEffect(() => {
+    if (isReownConnected && reownAddress) {
+      setWalletAddress(reownAddress);
+      setIsConnected(true);
+      
+      // Generate a test FID if not in mini-app
+      if (!inMiniApp && !userFid) {
+        const testFid = Math.floor(Math.random() * 100000) + 10000;
+        setUserFid(testFid);
+        loadContractData(testFid);
+        showNotification('✅ Wallet Connected via Reown!', 'green');
+      }
+    }
+  }, [isReownConnected, reownAddress]);
+
   // Farcaster initialization
   useEffect(() => {
     const initFarcaster = async () => {
@@ -962,16 +982,23 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
         </div>
       )}
 
-      {/* Wallet Connection */}
-      {!inMiniApp && isMetaMaskInstalled() && !isConnected && (
-        <button
-          onClick={connectWallet}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mb-4 sm:mb-6 disabled:opacity-50 text-sm sm:text-base"
-        >
-          <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
-          {loading ? 'Connecting...' : 'Connect Wallet'}
-        </button>
+      {/* Wallet Connection - Reown AppKit */}
+      {!inMiniApp && !isConnected && (
+        <div className="mb-4 sm:mb-6">
+          <appkit-button />
+          
+          {/* Fallback MetaMask connection */}
+          {isMetaMaskInstalled() && (
+            <button
+              onClick={connectWallet}
+              disabled={loading}
+              className="w-full mt-3 bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-orange-700 hover:to-red-700 transition-all duration-200 disabled:opacity-50 text-sm sm:text-base"
+            >
+              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
+              {loading ? 'Connecting...' : 'Connect MetaMask Only'}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Slot Machine */}
