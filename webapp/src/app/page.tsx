@@ -39,8 +39,6 @@ export default function SlotoCaster() {
   const [hasWonToday, setHasWonToday] = useState(false);
   
   // Contract state
-  const [dailyWinners, setDailyWinners] = useState(0);
-  const [maxDailyWinners] = useState(5);
   const [contractBalance, setContractBalance] = useState("0");
   const [jackpotAvailable, setJackpotAvailable] = useState(true);
   
@@ -63,7 +61,6 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
   });
 
   const [refreshing, setRefreshing] = useState(false);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const symbols = ['🍒', '🍋', '🍊', '⭐', '💎', '🔔', '🎰', '7️⃣', '💰'];
 
   // Local storage functions for stats
@@ -200,8 +197,8 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
         // Small delay to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
         
-      } catch (chunkError) {
-        console.log(`Failed to scan blocks ${fromBlock}-${Math.min(fromBlock + chunkSize - 1, currentBlock)}`);
+      } catch (error) {
+        console.log(`Failed to scan blocks ${fromBlock}-${Math.min(fromBlock + chunkSize - 1, currentBlock)}:`, error);
         // Continue with next chunk instead of failing completely
       }
     }
@@ -284,10 +281,8 @@ const handleViewProfile = async (fid: string) => {
       setPlayerStats(localStats);
       
       // Set working defaults for other data
-      setDailyWinners(0);
       setHasWonToday(false);
       setJackpotAvailable(true);
-      setLeaderboard([]);
       
       if (showLoadingNotification) {
         showNotification('✅ Stats loaded from local storage!', 'green');
@@ -340,6 +335,7 @@ const handleViewProfile = async (fid: string) => {
     if (currentPage === 'history' && isConnected && userFid) {
       loadContractData(userFid);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, isConnected, userFid]);
   
 // Leaderboard
@@ -347,6 +343,7 @@ useEffect(() => {
   if (currentPage === 'leaderboard') {
     fetchAllPlayers();
   }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [currentPage]);
   
   
@@ -364,6 +361,7 @@ useEffect(() => {
         showNotification('✅ Wallet Connected via Reown!', 'green');
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReownConnected, reownAddress]);
 
   // Farcaster initialization
@@ -392,6 +390,7 @@ useEffect(() => {
       }
     };
     initFarcaster();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load ethers if needed (fallback)
