@@ -6,24 +6,33 @@ import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/re
 
 export const useWalletConnection = () => {
   const { open } = useAppKit();
-  const { address, isConnected } = useAppKitAccount();
+  const { address, isConnected, caipAddress } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('eip155');
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
 
   useEffect(() => {
-    if (isConnected && walletProvider) {
-      const ethersProvider = new ethers.BrowserProvider(walletProvider);
-      setProvider(ethersProvider);
-      
-      ethersProvider.getSigner().then((signer) => {
-        setSigner(signer);
-      });
-    } else {
-      setProvider(null);
-      setSigner(null);
-    }
-  }, [isConnected, walletProvider]);
+    const setupProvider = async () => {
+      if (isConnected && walletProvider && caipAddress) {
+        try {
+          const ethersProvider = new ethers.BrowserProvider(walletProvider as any);
+          setProvider(ethersProvider);
+          
+          const ethSigner = await ethersProvider.getSigner();
+          setSigner(ethSigner);
+        } catch (error) {
+          console.error('Failed to setup wallet provider:', error);
+          setProvider(null);
+          setSigner(null);
+        }
+      } else {
+        setProvider(null);
+        setSigner(null);
+      }
+    };
+
+    setupProvider();
+  }, [isConnected, walletProvider, caipAddress]);
 
   const openWalletModal = () => {
     open();
