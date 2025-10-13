@@ -13,6 +13,7 @@ import {
 import { sdk } from '@farcaster/miniapp-sdk';
 import { ethers } from 'ethers';
 import { useAppKitAccount } from '@reown/appkit/react';
+import { WalletConnectButton } from '@/components/WalletConnectButton';
 
 export default function SlotoCaster() {
   // Reown AppKit wallet connection
@@ -984,7 +985,7 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
       {/* Wallet Connection - Reown AppKit */}
       {!inMiniApp && !isConnected && (
         <div className="mb-4 sm:mb-6">
-          <appkit-button />
+          <WalletConnectButton />
           
           {/* Fallback MetaMask connection */}
           {isMetaMaskInstalled() && (

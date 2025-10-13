@@ -12,7 +12,7 @@ const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'a9e76b0ec
 const metadata = {
   name: 'Sloto-caster',
   description: 'Farcaster slot machine game on Base network. Win real ETH!',
-  url: 'https://sloto-caster.vercel.app',
+  url: typeof window !== 'undefined' ? window.location.origin : 'https://sloto-caster.vercel.app',
   icons: ['https://sloto-caster.vercel.app/logo.png']
 };
 
