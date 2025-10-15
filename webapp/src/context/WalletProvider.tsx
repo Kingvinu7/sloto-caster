@@ -46,9 +46,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         themeVariables: {
           '--w3m-accent': '#7c3aed',
           '--w3m-border-radius-master': '12px'
-        },
-        enableAnalytics: true,
-        enableOnramp: false,
+        }
       });
 
       console.log('✅ Reown AppKit initialized with project ID:', projectId);
