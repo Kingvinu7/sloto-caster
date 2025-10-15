@@ -73,8 +73,8 @@ export default function TestWallet() {
           <div className="bg-blue-900/30 p-4 rounded-lg text-white text-sm">
             <h3 className="font-bold mb-2">📊 Expected Results:</h3>
             <ul className="space-y-1 list-disc list-inside">
-              <li>Click "Open Wallet Modal" should show wallet options</li>
-              <li>After connecting, "Is Connected" should be ✅ Yes</li>
+              <li>Click &quot;Open Wallet Modal&quot; should show wallet options</li>
+              <li>After connecting, &quot;Is Connected&quot; should be ✅ Yes</li>
               <li>Address should show your wallet address (0x...)</li>
               <li>CAIP Address should show with chain ID (eip155:8453:0x...)</li>
               <li>Provider Available should be ✅ Yes</li>

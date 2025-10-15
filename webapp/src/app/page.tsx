@@ -345,8 +345,7 @@ useEffect(() => {
   if (currentPage === 'leaderboard') {
     fetchAllPlayers();
   }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [currentPage]);
+}, [currentPage, fetchAllPlayers]);
   
   
   // Sync Reown wallet connection state
