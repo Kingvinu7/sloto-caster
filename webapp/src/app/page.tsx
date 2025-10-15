@@ -351,32 +351,35 @@ useEffect(() => {
   
   // Sync Reown wallet connection state
   useEffect(() => {
-    console.log('🔗 Reown state changed:', { isReownConnected, reownAddress });
+    console.log('🔗 Reown state changed:', { 
+      isReownConnected, 
+      reownAddress,
+      inMiniApp,
+      currentWalletAddress: walletAddress,
+      currentIsConnected: isConnected 
+    });
     
-    if (isReownConnected && reownAddress) {
+    if (isReownConnected && reownAddress && !inMiniApp) {
       console.log('✅ Wallet connected via Reown AppKit:', reownAddress);
       setWalletAddress(reownAddress);
       setIsConnected(true);
       
       // Generate a test FID if not in mini-app
-      if (!inMiniApp && !userFid) {
+      if (!userFid) {
         const testFid = Math.floor(Math.random() * 100000) + 10000;
         setUserFid(testFid);
         loadContractData(testFid);
         showNotification('✅ Wallet Connected via Reown!', 'green');
       }
-    } else if (!isReownConnected && isConnected) {
+    } else if (!isReownConnected && !inMiniApp && walletAddress === reownAddress) {
       console.log('🔴 Wallet disconnected from Reown');
-      // Only reset if not in Farcaster mini-app
-      if (!inMiniApp) {
-        setWalletAddress(null);
-        setIsConnected(false);
-        setUserFid(null);
-        showNotification('👋 Wallet Disconnected', 'orange');
-      }
+      setWalletAddress(null);
+      setIsConnected(false);
+      setUserFid(null);
+      showNotification('👋 Wallet Disconnected', 'orange');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReownConnected, reownAddress]);
+  }, [isReownConnected, reownAddress, inMiniApp]);
 
   // Farcaster initialization
   useEffect(() => {
@@ -996,20 +999,18 @@ https://farcaster.xyz/miniapps/q48CMd_Ss_iF/sloto-caster`;
       )}
 
       {/* Wallet Connection - Reown AppKit */}
-      {!inMiniApp && !isConnected && (
+      {!inMiniApp && (
         <div className="mb-4 sm:mb-6">
           <WalletConnectButton />
           
-          {/* Fallback MetaMask connection */}
-          {isMetaMaskInstalled() && (
-            <button
-              onClick={connectWallet}
-              disabled={loading}
-              className="w-full mt-3 bg-gradient-to-r from-orange-600 to-red-600 text-white py-3 px-4 sm:px-6 rounded-lg font-semibold flex items-center justify-center gap-2 hover:from-orange-700 hover:to-red-700 transition-all duration-200 disabled:opacity-50 text-sm sm:text-base"
-            >
-              <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
-              {loading ? 'Connecting...' : 'Connect MetaMask Only'}
-            </button>
+          {/* Debug info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-2 text-xs text-white/60 bg-black/20 p-2 rounded">
+              <div>isConnected: {isConnected.toString()}</div>
+              <div>isReownConnected: {isReownConnected.toString()}</div>
+              <div>reownAddress: {reownAddress || 'none'}</div>
+              <div>walletAddress: {walletAddress || 'none'}</div>
+            </div>
           )}
         </div>
       )}
