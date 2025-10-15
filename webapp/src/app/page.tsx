@@ -1314,3 +1314,11 @@ const renderLeaderboardPage = () => (
     </div>
   );
 }
+
+export default function SlotoCaster() {
+  return (
+    <ClientOnly>
+      <SlotoCasterGame />
+    </ClientOnly>
+  );
+}
