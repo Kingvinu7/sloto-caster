@@ -30,8 +30,6 @@ export const metadata: Metadata = {
     description: 'Hit 7️⃣7️⃣7️⃣ to win $1.00 ETH! Farcaster slot machine game on Base network.',
     images: ['https://sloto-caster.vercel.app/previews.png'],
   },
-  viewport: 'width=device-width, initial-scale=1',
-  themeColor: '#7c3aed',
   other: {
     'fc:frame': 'vNext',
     'fc:frame:image': 'https://sloto-caster.vercel.app/previews.png',
@@ -39,6 +37,12 @@ export const metadata: Metadata = {
     'fc:frame:button:1:action': 'link',
     'fc:frame:button:1:target': 'https://sloto-caster.vercel.app',
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#7c3aed',
 };
 
 export default function RootLayout({

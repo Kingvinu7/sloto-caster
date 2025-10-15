@@ -2,8 +2,9 @@
 
 import { useAppKit, useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
 import { useEffect, useState } from 'react';
+import ClientOnly from '../ClientOnly';
 
-export default function TestWallet() {
+function TestWalletContent() {
   const { open } = useAppKit();
   const { address, isConnected, caipAddress, status } = useAppKitAccount();
   const { walletProvider } = useAppKitProvider('eip155');
@@ -100,5 +101,13 @@ export default function TestWallet() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TestWallet() {
+  return (
+    <ClientOnly>
+      <TestWalletContent />
+    </ClientOnly>
   );
 }
