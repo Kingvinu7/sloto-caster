@@ -228,7 +228,7 @@ const fetchAllPlayers = React.useCallback(async () => {
   } finally {
     setLoadingPlayers(false);
   }
-};
+}, []);
   
 const handleViewProfile = async (fid: string) => {
   try {
