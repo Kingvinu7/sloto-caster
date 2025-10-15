@@ -126,8 +126,8 @@ const [loadingPlayers, setLoadingPlayers] = useState(false);
     throw new Error('No wallet provider found');
   };
 
-
-  const fetchAllPlayers = async () => {
+  
+const fetchAllPlayers = React.useCallback(async () => {
   try {
     setLoadingPlayers(true);
     const provider = new ethers.JsonRpcProvider('https://mainnet.base.org');
