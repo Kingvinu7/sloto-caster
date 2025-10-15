@@ -1,23 +1,31 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppKit, useAppKitAccount, useDisconnect } from '@reown/appkit/react';
 import { Wallet, LogOut } from 'lucide-react';
 
 export function WalletConnectButton() {
   const { open } = useAppKit();
-  const { isConnected, address } = useAppKitAccount();
+  const { isConnected, address, caipAddress } = useAppKitAccount();
   const { disconnect } = useDisconnect();
 
+  useEffect(() => {
+    console.log('🔌 WalletConnectButton state:', { isConnected, address, caipAddress });
+  }, [isConnected, address, caipAddress]);
+
   const handleConnect = () => {
+    console.log('🔵 Opening wallet modal...');
     open();
   };
 
   const handleDisconnect = async () => {
+    console.log('🔴 Disconnecting wallet...');
     await disconnect();
+    console.log('✅ Wallet disconnected');
   };
 
   if (isConnected && address) {
+    console.log('✅ Showing disconnect button for address:', address);
     return (
       <div className="flex gap-2">
         <button

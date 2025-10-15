@@ -351,7 +351,10 @@ useEffect(() => {
   
   // Sync Reown wallet connection state
   useEffect(() => {
+    console.log('🔗 Reown state changed:', { isReownConnected, reownAddress });
+    
     if (isReownConnected && reownAddress) {
+      console.log('✅ Wallet connected via Reown AppKit:', reownAddress);
       setWalletAddress(reownAddress);
       setIsConnected(true);
       
@@ -361,6 +364,15 @@ useEffect(() => {
         setUserFid(testFid);
         loadContractData(testFid);
         showNotification('✅ Wallet Connected via Reown!', 'green');
+      }
+    } else if (!isReownConnected && isConnected) {
+      console.log('🔴 Wallet disconnected from Reown');
+      // Only reset if not in Farcaster mini-app
+      if (!inMiniApp) {
+        setWalletAddress(null);
+        setIsConnected(false);
+        setUserFid(null);
+        showNotification('👋 Wallet Disconnected', 'orange');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
