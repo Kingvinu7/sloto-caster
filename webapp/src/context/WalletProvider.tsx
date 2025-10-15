@@ -54,8 +54,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
           'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96', // MetaMask
           'fd20dc426fb37566d803205b19bbc1d4096b248ac04548e3cfb6b3a38bd033aa', // Coinbase
           '1ae92b26df02f0abca6304df07debccd18262fdf5fe82daa81593582dac9a369', // Rainbow
-        ],
-        enableAnalytics: true
+        ]
       });
 
       // Expose globally for debugging
