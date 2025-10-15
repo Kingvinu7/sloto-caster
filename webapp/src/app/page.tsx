@@ -345,7 +345,8 @@ useEffect(() => {
   if (currentPage === 'leaderboard') {
     fetchAllPlayers();
   }
-}, [currentPage, fetchAllPlayers]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [currentPage]);
   
   
   // Sync Reown wallet connection state
@@ -1311,13 +1312,5 @@ const renderLeaderboardPage = () => (
         {currentPage === 'history' && renderHistoryPage()}
       </div>
     </div>
-  );
-}
-
-export default function SlotoCaster() {
-  return (
-    <ClientOnly>
-      <SlotoCasterGame />
-    </ClientOnly>
   );
 }
