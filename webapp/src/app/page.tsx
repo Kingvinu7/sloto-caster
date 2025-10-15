@@ -14,8 +14,9 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { ethers } from 'ethers';
 import { useAppKitAccount } from '@reown/appkit/react';
 import { WalletConnectButton } from '@/components/WalletConnectButton';
+import ClientOnly from './ClientOnly';
 
-export default function SlotoCaster() {
+function SlotoCasterGame() {
   // Reown AppKit wallet connection
   const { address: reownAddress, isConnected: isReownConnected } = useAppKitAccount();
 
@@ -1310,5 +1311,13 @@ const renderLeaderboardPage = () => (
         {currentPage === 'history' && renderHistoryPage()}
       </div>
     </div>
+  );
+}
+
+export default function SlotoCaster() {
+  return (
+    <ClientOnly>
+      <SlotoCasterGame />
+    </ClientOnly>
   );
 }
